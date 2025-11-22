@@ -321,7 +321,7 @@ export default function Dashboard({ sheets, onViewSheet }: DashboardProps) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-900">File de Production Prioritaire</h2>
-            <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"></button>
+            <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1">
               Voir tout le planning <ArrowRight className="w-4 h-4" />
             </button>
           </div>
