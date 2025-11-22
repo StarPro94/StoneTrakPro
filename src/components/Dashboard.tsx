@@ -1,15 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { 
-  TrendingUp, AlertTriangle, Zap, Package, 
-  CheckCircle2, Sparkles, Brain, 
-  Activity, ChevronRight, Search, Bell, MoreHorizontal
+  TrendingUp, AlertTriangle, Clock, Zap, Package, 
+  CheckCircle2, ArrowRight, Sparkles, Brain, 
+  Calendar, ChevronRight, MoreHorizontal, Activity,
+  AlertCircle, BarChart3
 } from 'lucide-react';
 import { DebitSheet } from '../types';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
-} from 'recharts';
 import ChatAssistant from './ChatAssistant';
-import { format, subDays, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
@@ -17,473 +15,386 @@ interface DashboardProps {
   onViewSheet?: (sheet: DebitSheet) => void;
 }
 
-// --- 🎨 MICRO-COMPOSANTS UI "OBSIDIAN" ---
+// --- Composants UI Premium (Micro-Components) ---
 
-const ObsidianCard = ({ 
-  children, 
-  className = "", 
-  glowColor = "indigo",
-  delay = 0
-}: { 
-  children: React.ReactNode, 
-  className?: string, 
-  glowColor?: 'indigo' | 'emerald' | 'rose' | 'amber' | 'blue',
-  delay?: number
-}) => {
-  const glows = {
-    indigo: 'bg-indigo-500/10',
-    emerald: 'bg-emerald-500/10',
-    rose: 'bg-rose-500/10',
-    amber: 'bg-amber-500/10',
-    blue: 'bg-blue-500/10'
-  };
+const PremiumCard = ({ children, className = "", gradient = false }: { children: React.ReactNode, className?: string, gradient?: boolean }) => (
+  <div className={`relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md ${className}`}>
+    {gradient && (
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-slate-50 opacity-50" />
+    )}
+    <div className="relative z-10">{children}</div>
+  </div>
+);
 
-  return (
-    <div 
-      className={`relative overflow-hidden rounded-2xl bg-[#111318] border border-white/5 p-6 transition-all duration-500 hover:border-white/10 hover:shadow-2xl group animate-fadeIn ${className}`}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'backwards' }}
-    >
-      <div className={`absolute -top-24 -right-24 w-48 h-48 ${glows[glowColor]} blur-[80px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-80 opacity-40`} />
-      <div className="relative z-10 h-full">{children}</div>
-    </div>
-  );
-};
-
-const NeonBadge = ({ text, color }: { text: string, color: 'blue' | 'green' | 'orange' | 'purple' }) => {
-  const styles = {
-    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.15)]',
-    green: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
-    orange: 'bg-orange-500/10 text-orange-400 border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.15)]',
-    purple: 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.15)]',
+const StatusBadge = ({ status, text }: { status: 'success' | 'warning' | 'error' | 'neutral', text: string }) => {
+  const colors = {
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    warning: 'bg-amber-50 text-amber-700 border-amber-100',
+    error: 'bg-rose-50 text-rose-700 border-rose-100',
+    neutral: 'bg-slate-50 text-slate-600 border-slate-100',
   };
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${styles[color]}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors[status]}`}>
       {text}
     </span>
   );
 };
 
-const StatValue = ({ value, unit, trend }: { value: string | number, unit?: string, trend?: string }) => (
-  <div className="flex items-end gap-2 mt-3">
-    <span className="text-4xl font-bold text-white tracking-tight leading-none">{value}</span>
-    <div className="flex flex-col mb-0.5">
-      {unit && <span className="text-xs font-medium text-gray-500">{unit}</span>}
-      {trend && <span className="text-xs font-bold text-emerald-400">{trend}</span>}
-    </div>
-  </div>
-);
+// --- Logique Principale ---
 
-// --- DASHBOARD INTELLIGENT ---
-
-export default function Dashboard({ sheets = [], onViewSheet }: DashboardProps) {
+export default function Dashboard({ sheets, onViewSheet }: DashboardProps) {
   const [isChatMinimized, setIsChatMinimized] = useState(true);
 
-  // 🧠 CALCULS INTELLIGENTS (MÉMOISÉS)
-  const analytics = useMemo(() => {
-    const safeSheets = Array.isArray(sheets) ? sheets : [];
+  // 🧠 LE CERVEAU DU DASHBOARD (Calculs IA)
+  const intelligence = useMemo(() => {
     const now = new Date();
     
-    // 1. Données de base
-    const active = safeSheets.filter(s => !s.fini && !s.livre);
-    const finished = safeSheets.filter(s => s.fini);
+    // 1. Filtrage de base
+    const activeSheets = sheets.filter(s => !s.fini && !s.livre);
+    const completedToday = sheets.filter(s => s.fini && s.dateFinition && new Date(s.dateFinition).getDate() === now.getDate()).length;
     
-    const totalM2 = active.reduce((acc, s) => acc + (s.m2 || 0), 0);
-    const totalM3 = active.reduce((acc, s) => acc + (s.m3 || 0), 0);
-
-    // 2. Détection d'urgences (Date parsing robuste)
-    const urgencies = active.filter(s => {
-      if (!s.delai) return false;
-      try {
-        // Parsing basique de la date si string, ou utilisation direct si Date
-        const delaiDate = new Date(s.delai); 
-        // Fallback simple si le parsing échoue ou si c'est du texte libre
-        if (isNaN(delaiDate.getTime())) return s.delai.toLowerCase().includes('urgent');
-        
-        const diffTime = delaiDate.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays <= 5; // Urgent si < 5 jours
-      } catch {
-        return false;
-      }
-    });
-
-    // 3. Score de charge (0-100)
-    // Basé sur le nombre de commandes actives vs "capacité théorique" (ex: 20)
-    const loadScore = Math.min(100, Math.round((active.length / 20) * 100));
-    
-    // 4. Génération des données pour le Graphique (7 derniers jours)
-    const chartData = Array.from({ length: 7 }).map((_, i) => {
-      const date = subDays(now, 6 - i);
-      // Trouver les commandes créées ce jour-là
-      const daySheets = safeSheets.filter(s => {
-        if (!s.dateCreation) return false;
-        return isSameDay(new Date(s.dateCreation), date);
-      });
+    // 2. Analyse d'Urgence (Scoring)
+    const prioritizedSheets = activeSheets.map(sheet => {
+      let score = 0;
+      let urgentReason = "";
       
-      return {
-        name: format(date, 'EEE', { locale: fr }), // Lun, Mar...
-        fullDate: format(date, 'd MMM', { locale: fr }),
-        m2: daySheets.reduce((acc, s) => acc + (s.m2 || 0), 0),
-        orders: daySheets.length
-      };
-    });
+      // Facteur Délai
+      const delaiStr = sheet.delai?.trim();
+      const delaiDays = delaiStr && !isNaN(parseInt(delaiStr)) ? parseInt(delaiStr) : null;
+      let daysRemaining = null;
 
-    // 5. Insight IA généré
-    let insight = "Flux de production stable.";
-    let insightType: 'neutral' | 'warning' | 'good' = 'neutral';
+      if (delaiDays !== null) {
+        const creationDate = new Date(sheet.dateCreation);
+        const dueDate = new Date(creationDate);
+        dueDate.setDate(dueDate.getDate() + delaiDays);
+        daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysRemaining < 0) { score += 50; urgentReason = "En retard"; }
+        else if (daysRemaining <= 2) { score += 30; urgentReason = "Échéance imminente"; }
+        else if (daysRemaining <= 5) { score += 10; }
+      }
+
+      // Facteur Complexité (Volume/Surface)
+      if (sheet.m2 > 50 || sheet.m3 > 2) { score += 5; }
+
+      return { ...sheet, score, daysRemaining, urgentReason };
+    }).sort((a, b) => b.score - a.score);
+
+    const highPriority = prioritizedSheets.filter(s => s.score >= 30);
     
-    if (urgencies.length > 3) {
-      insight = `${urgencies.length} commandes arrivent à échéance cette semaine. Priorité requise.`;
-      insightType = 'warning';
-    } else if (loadScore > 85) {
-      insight = "Surcharge atelier détectée (>85%). Risque de goulot d'étranglement.";
-      insightType = 'warning';
-    } else if (active.length > 0) {
-      insight = "Production fluide. Charge atelier optimale pour de nouvelles entrées.";
-      insightType = 'good';
-    }
+    // 3. Analyse de Charge
+    const totalActiveM2 = activeSheets.reduce((acc, s) => acc + s.m2, 0);
+    const totalActiveM3 = activeSheets.reduce((acc, s) => acc + s.m3, 0);
+    
+    // Simuler une capacité machine (à remplacer par vraie data plus tard)
+    const capacityScore = Math.min(100, (activeSheets.length / 15) * 100); 
+    let loadStatus: 'light' | 'optimal' | 'heavy' | 'critical' = 'optimal';
+    if (capacityScore < 30) loadStatus = 'light';
+    else if (capacityScore > 80) loadStatus = 'heavy';
+    else if (capacityScore > 95) loadStatus = 'critical';
+
+    // 4. Génération de l'Insight IA du jour (Phrase naturelle)
+    let dailyInsight = "Activité normale détectée. Flux de production stable.";
+    if (highPriority.length > 3) dailyInsight = "Attention : Accumulation de commandes urgentes. Priorisez la découpe.";
+    else if (capacityScore > 90) dailyInsight = "Surcharge machine probable. Envisagez de décaler les livraisons non urgentes.";
+    else if (completedToday > 3) dailyInsight = "Excellent rythme aujourd'hui ! La production est fluide.";
 
     return {
-      activeCount: active.length,
-      finishedCount: finished.length,
-      totalM2,
-      totalM3,
-      urgentCount: urgencies.length,
-      loadScore,
-      chartData,
-      insight,
-      insightType,
-      topUrgent: urgencies.slice(0, 3)
+      activeCount: activeSheets.length,
+      highPriority,
+      totalActiveM2,
+      totalActiveM3,
+      loadStatus,
+      capacityScore,
+      dailyInsight,
+      completedToday
     };
   }, [sheets]);
 
+  // Helpers d'affichage
+  const getLoadColor = (score: number) => {
+    if (score < 50) return 'text-emerald-600';
+    if (score < 80) return 'text-amber-600';
+    return 'text-rose-600';
+  };
+
+  const today = format(new Date(), 'dQ MMMM yyyy', { locale: fr });
+
   return (
-    <div className="min-h-screen bg-[#090A0C] text-gray-300 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
-      <div className="mx-auto max-w-[1600px] space-y-8">
+    <div className="min-h-screen bg-slate-50/50 p-6 lg:p-10 font-sans text-slate-900">
+      <div className="mx-auto max-w-7xl space-y-8">
         
-        {/* --- HEADER --- */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="animate-slideRight">
-            <h1 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-4">
-              <div className="h-10 w-1.5 bg-gradient-to-b from-indigo-500 to-violet-600 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
-              <span className="tracking-tight">StoneTrak <span className="text-gray-600 font-light">Pro</span></span>
+        {/* --- HEADER: Welcoming & Context --- */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Tableau de Bord
             </h1>
-            <p className="text-sm text-gray-500 mt-2 ml-6 font-medium">
-              {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
+            <p className="mt-1 text-slate-500 flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> {today}
             </p>
           </div>
-          
-          <div className="flex items-center gap-4 animate-slideLeft">
-            {/* Search Bar */}
-            <div className="relative hidden lg:block group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-indigo-400 transition-colors" />
-              <input 
-                type="text" 
-                placeholder="Rechercher un dossier..." 
-                className="bg-[#13161B] border border-white/5 rounded-full py-3 pl-11 pr-6 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 w-80 transition-all shadow-inner"
-              />
-            </div>
-            
-            {/* Notifications */}
-            <button className="p-3 rounded-full bg-[#13161B] border border-white/5 text-gray-400 hover:text-white hover:bg-white/5 transition-all relative group">
-              <Bell className="w-5 h-5 group-hover:animate-swing" />
-              {analytics.urgentCount > 0 && (
-                <span className="absolute top-2.5 right-3 w-2 h-2 bg-rose-500 rounded-full ring-4 ring-[#13161B] animate-pulse"></span>
-              )}
-            </button>
-            
-            {/* AI Button */}
-            <button className="flex items-center gap-2 bg-white text-[#090A0C] px-6 py-3 rounded-full text-sm font-bold hover:bg-indigo-50 transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+          <div className="flex items-center gap-3">
+            <button className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900">
+              <Brain className="h-4 w-4 text-violet-500 transition group-hover:scale-110" />
               <span>Assistant IA</span>
             </button>
+            <button className="group flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-slate-800 hover:shadow-lg active:scale-95">
+              <Sparkles className="h-4 w-4 text-yellow-400" />
+              <span>Analyser</span>
+            </button>
           </div>
         </div>
 
-        {/* --- KPI GRID (Bento Grid) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          
-          {/* KPI 1: Production Active */}
-          <ObsidianCard glowColor="indigo" delay={100}>
-            <div className="flex justify-between items-start">
-              <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
-                <Activity className="w-6 h-6" />
+        {/* --- SECTION 1: KPIS (Bento Grid Top) --- */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* KPI 1: Commandes Actives */}
+          <PremiumCard className="group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">En Production</p>
+                <h3 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+                  {intelligence.activeCount}
+                </h3>
               </div>
-              <NeonBadge text="En cours" color="blue" />
+              <div className="rounded-xl bg-blue-50 p-3 text-blue-600 transition-colors group-hover:bg-blue-100">
+                <Package className="h-6 w-6" />
+              </div>
             </div>
-            <div className="mt-6">
-                <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Dossiers Actifs</p>
-                <StatValue value={analytics.activeCount} unit="commandes" />
+            <div className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-600">
+              <span className="bg-slate-100 px-2 py-1 rounded-md">{intelligence.totalActiveM2.toFixed(0)} m²</span>
+              <span className="bg-slate-100 px-2 py-1 rounded-md">{intelligence.totalActiveM3.toFixed(2)} m³</span>
             </div>
-          </ObsidianCard>
+          </PremiumCard>
 
-          {/* KPI 2: Surface (M2) */}
-          <ObsidianCard glowColor="emerald" delay={200}>
-            <div className="flex justify-between items-start">
-              <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
-                <Package className="w-6 h-6" />
+          {/* KPI 2: Urgences */}
+          <PremiumCard className={`group ${intelligence.highPriority.length > 0 ? 'ring-1 ring-rose-100' : ''}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Attention Requise</p>
+                <h3 className={`mt-2 text-3xl font-bold tracking-tight ${intelligence.highPriority.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                  {intelligence.highPriority.length}
+                </h3>
               </div>
-              <NeonBadge text="+12% vs sem." color="green" />
+              <div className={`rounded-xl p-3 transition-colors ${intelligence.highPriority.length > 0 ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-slate-50 text-slate-400'}`}>
+                <AlertTriangle className="h-6 w-6" />
+              </div>
             </div>
-            <div className="mt-6">
-                <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Surface Totale</p>
-                <StatValue value={analytics.totalM2.toFixed(0)} unit="m²" />
-            </div>
-          </ObsidianCard>
+            <p className="mt-4 text-xs text-slate-500">
+              Commandes avec échéance &lt; 3 jours
+            </p>
+          </PremiumCard>
 
-          {/* KPI 3: Urgences */}
-          <ObsidianCard glowColor="rose" delay={300} className={analytics.urgentCount > 0 ? 'border-rose-500/20' : ''}>
-            <div className="flex justify-between items-start">
-              <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/20 text-rose-400">
-                <AlertTriangle className="w-6 h-6" />
+          {/* KPI 3: Charge Machine (IA) */}
+          <PremiumCard>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Charge Atelier</p>
+                <h3 className={`mt-2 text-3xl font-bold tracking-tight ${getLoadColor(intelligence.capacityScore)}`}>
+                  {intelligence.capacityScore.toFixed(0)}%
+                </h3>
               </div>
-              {analytics.urgentCount > 0 && <NeonBadge text="Prioritaire" color="orange" />}
+              <div className="rounded-xl bg-amber-50 p-3 text-amber-600 group-hover:bg-amber-100">
+                <Activity className="h-6 w-6" />
+              </div>
             </div>
-            <div className="mt-6">
-                <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Urgences</p>
-                <StatValue value={analytics.urgentCount} unit="dossiers" />
+            <div className="mt-4 h-1.5 w-full rounded-full bg-slate-100">
+              <div 
+                className={`h-1.5 rounded-full transition-all duration-1000 ${intelligence.capacityScore > 80 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                style={{ width: `${intelligence.capacityScore}%` }}
+              />
             </div>
-          </ObsidianCard>
+          </PremiumCard>
 
-          {/* KPI 4: Charge Atelier (AI) */}
-          <ObsidianCard glowColor="amber" delay={400}>
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-400">
-                <Zap className="w-6 h-6" />
+          {/* KPI 4: Performance Jour */}
+          <PremiumCard>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Terminé auj.</p>
+                <h3 className="mt-2 text-3xl font-bold tracking-tight text-emerald-600">
+                  {intelligence.completedToday}
+                </h3>
               </div>
-              <div className="flex items-center gap-1 text-xs font-medium text-amber-400/80">
-                <Brain className="w-3 h-3" />
-                <span>AI Analysis</span>
+              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600 group-hover:bg-emerald-100">
+                <CheckCircle2 className="h-6 w-6" />
               </div>
             </div>
-            <div>
-                <div className="flex justify-between items-end mb-2">
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Charge Atelier</p>
-                  <span className={`text-xl font-bold ${analytics.loadScore > 80 ? 'text-rose-400' : 'text-white'}`}>
-                    {analytics.loadScore}%
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                          analytics.loadScore > 80 ? 'bg-gradient-to-r from-rose-600 to-orange-500' : 'bg-gradient-to-r from-indigo-500 to-cyan-400'
-                        }`}
-                        style={{ width: `${analytics.loadScore}%` }}
-                    />
-                </div>
-            </div>
-          </ObsidianCard>
-
+            <p className="mt-4 flex items-center text-xs font-medium text-emerald-600">
+              <TrendingUp className="mr-1 h-3 w-3" /> Performance stable
+            </p>
+          </PremiumCard>
         </div>
 
-        {/* --- CENTRAL DASHBOARD --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* --- SECTION 2: INTELLIGENCE GRID (Bento Layout) --- */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           
-          {/* CHART SECTION (Large) */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* AI Insight Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#161b22] to-[#0d1117] border border-white/5 p-1 shadow-lg animate-fadeIn" style={{ animationDelay: '500ms' }}>
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent opacity-50"></div>
-              <div className="bg-[#111318]/80 backdrop-blur-xl rounded-xl p-6 flex items-start gap-5">
-                 <div className="p-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 shrink-0">
-                   <Sparkles className="w-5 h-5 text-indigo-400" />
-                 </div>
-                 <div>
-                   <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-                     Analyse Quotidienne
-                     {analytics.insightType === 'warning' && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"/>}
-                   </h3>
-                   <p className="text-gray-400 text-sm leading-relaxed">
-                     "{analytics.insight}"
-                     {analytics.urgentCount > 0 && (
-                       <span className="block mt-2 text-indigo-400 text-xs cursor-pointer hover:text-indigo-300 flex items-center gap-1">
-                         Voir les recommandations <ArrowRight className="w-3 h-3" />
-                       </span>
-                     )}
-                   </p>
-                 </div>
-              </div>
-            </div>
-
-            {/* Graphique de Vélocité */}
-            <ObsidianCard className="min-h-[400px] flex flex-col" delay={600}>
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Vélocité de Production</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Mètres carrés produits (7 derniers jours)</p>
+          {/* Bloc 1: Analyse IA (Large) */}
+          <div className="col-span-1 lg:col-span-2">
+            <PremiumCard className="h-full !bg-gradient-to-br !from-slate-900 !to-slate-800 !text-white !border-slate-700">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-lg bg-white/10 backdrop-blur-sm">
+                  <Brain className="h-5 w-5 text-violet-300" />
                 </div>
-                {/* Chart Filters */}
-                <div className="flex gap-2 bg-[#090A0C] p-1 rounded-lg border border-white/5">
-                  {['7J', '30J', '1A'].map((period, i) => (
-                    <button 
-                      key={period}
-                      className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
-                        i === 0 ? 'bg-[#1A1D21] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'
-                      }`}
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
+                <h3 className="text-lg font-semibold">Analyse StoneTrak AI</h3>
               </div>
               
-              <div className="flex-1 w-full min-h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={analytics.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorM2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fill: '#6b7280', fontSize: 11, fontWeight: 600}} 
-                      dy={15}
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fill: '#6b7280', fontSize: 11}} 
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: '#1A1D21', 
-                        border: '1px solid rgba(255,255,255,0.1)', 
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-                      }}
-                      itemStyle={{color: '#e2e8f0', fontSize: '12px', fontWeight: 600}}
-                      cursor={{stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '5 5'}}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="m2" 
-                      stroke="#6366f1" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorM2)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">Diagnostic en temps réel</p>
+                  <p className="text-xl font-medium leading-relaxed text-slate-100">
+                    "{intelligence.dailyInsight}"
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h4 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-yellow-400" /> Recommandation Prioritaire
+                    </h4>
+                    {intelligence.highPriority.length > 0 ? (
+                       <p className="text-sm text-slate-200">
+                         Traiter immédiatement la commande <span className="font-bold text-white">{intelligence.highPriority[0].numeroOS}</span> ({intelligence.highPriority[0].nomClient}).
+                       </p>
+                    ) : (
+                      <p className="text-sm text-slate-200">Aucune urgence critique. Optimisez le stock de tranches K2.</p>
+                    )}
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h4 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-emerald-400" /> Efficacité Production
+                    </h4>
+                    <p className="text-sm text-slate-200">
+                      Volume de découpe prévu à <span className="font-bold text-white">{(intelligence.totalActiveM2 * 0.8).toFixed(1)} m²</span> pour demain selon la charge actuelle.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </ObsidianCard>
+            </PremiumCard>
           </div>
 
-          {/* SIDEBAR (Queue de production) */}
-          <div className="lg:col-span-1">
-            <ObsidianCard className="h-full flex flex-col" delay={700}>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                   <TrendingUp className="w-5 h-5 text-emerald-400" />
-                   Flux de sortie
+          {/* Bloc 2: Actions Rapides / Alertes (Side) */}
+          <div className="col-span-1">
+            <PremiumCard className="h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-slate-400" />
+                  Alertes Système
                 </h3>
-                <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 px-2 py-1 rounded-md">
-                  Tout voir
-                </button>
+                <span className="text-xs font-medium text-slate-400">Temps réel</span>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                {sheets.length === 0 ? (
-                  <div className="h-40 flex flex-col items-center justify-center text-gray-600 text-sm border border-dashed border-gray-800 rounded-xl bg-[#0C0E12]">
-                    <Package className="w-8 h-8 mb-2 opacity-20" />
-                    Aucune commande
+              <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                {intelligence.highPriority.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-slate-400">
+                    <CheckCircle2 className="w-12 h-12 mb-2 opacity-20" />
+                    <p className="text-sm">Tout est sous contrôle</p>
                   </div>
                 ) : (
-                  sheets.filter(s => !s.fini).slice(0, 6).map((sheet, i) => {
-                     const isTopUrgent = analytics.topUrgent.find(u => u.id === sheet.id);
-                     return (
-                      <div 
-                        key={sheet.id} 
-                        onClick={() => onViewSheet?.(sheet)}
-                        className={`group relative overflow-hidden p-3 rounded-xl bg-[#15181E] border transition-all cursor-pointer
-                          ${isTopUrgent 
-                            ? 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10' 
-                            : 'border-transparent hover:border-white/10 hover:bg-[#1C2026]'
-                          }`}
-                      >
-                        {isTopUrgent && (
-                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500"></div>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border border-white/5 
-                              ${i === 0 ? 'bg-indigo-500/20 text-indigo-300 shadow-lg shadow-indigo-500/10' : 'bg-[#1A1D21] text-gray-600'}`}>
-                              {i + 1}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">{sheet.numeroOS}</p>
-                              <p className="text-xs text-gray-500 truncate max-w-[100px]">{sheet.nomClient}</p>
-                            </div>
-                          </div>
-                          <div className="text-right flex flex-col items-end">
-                            <span className={`text-xs font-bold ${sheet.m2 > 50 ? 'text-indigo-300' : 'text-gray-400'}`}>
-                              {sheet.m2 > 0 ? sheet.m2.toFixed(0) : sheet.m3.toFixed(1)}
-                              <span className="text-[10px] ml-0.5 text-gray-600">{sheet.m2 > 0 ? 'm²' : 'm³'}</span>
-                            </span>
-                            {isTopUrgent && <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider mt-1">Urgent</span>}
-                          </div>
-                        </div>
-                        
-                        {/* Hover Action */}
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                          <div className="bg-white text-black p-1.5 rounded-lg shadow-lg">
-                             <ChevronRight className="w-4 h-4" />
-                          </div>
-                        </div>
+                  intelligence.highPriority.slice(0, 4).map((sheet) => (
+                    <div 
+                      key={sheet.id} 
+                      onClick={() => onViewSheet?.(sheet)}
+                      className="group flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:border-rose-100 hover:bg-rose-50"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-rose-600 shadow-sm group-hover:scale-110 transition-transform">
+                        <Clock className="h-5 w-5" />
                       </div>
-                    );
-                  })
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="truncate text-sm font-semibold text-slate-900">{sheet.numeroOS}</p>
+                          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
+                             {sheet.daysRemaining !== null && sheet.daysRemaining < 0 ? `+${Math.abs(sheet.daysRemaining)}j` : `${sheet.daysRemaining}j`}
+                          </span>
+                        </div>
+                        <p className="truncate text-xs text-slate-500">{sheet.nomClient}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rose-400" />
+                    </div>
+                  ))
                 )}
               </div>
-              
-              <button className="w-full mt-4 py-3 rounded-xl border border-dashed border-gray-800 text-gray-500 hover:text-white hover:border-gray-600 hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
-                <Package className="w-4 h-4" />
-                Importer une commande
-              </button>
-            </ObsidianCard>
+            </PremiumCard>
           </div>
-
         </div>
+
+        {/* --- SECTION 3: WORKFLOW (Liste intelligente) --- */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-900">File de Production Prioritaire</h2>
+            <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir tout le planning <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-6 py-4">Ordre (IA)</th>
+                  <th className="px-6 py-4">OS / Client</th>
+                  <th className="px-6 py-4">Matière</th>
+                  <th className="px-6 py-4">Dimensions</th>
+                  <th className="px-6 py-4">Statut</th>
+                  <th className="px-6 py-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {intelligence.highPriority.slice(0, 5).concat(sheets.filter(s => !s.fini).slice(0, 3)).slice(0, 5).map((sheet, idx) => (
+                  <tr key={sheet.id} className="group hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4">
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${idx < 2 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {idx + 1}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900">{sheet.numeroOS}</div>
+                      <div className="text-xs text-slate-500">{sheet.nomClient}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block max-w-[150px] truncate rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                        {sheet.fourniture}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-slate-500">
+                      {sheet.m2 > 0 ? <>{sheet.m2.toFixed(2)} m²</> : <>{sheet.m3.toFixed(2)} m³</>}
+                    </td>
+                    <td className="px-6 py-4">
+                      {/* Logic simulée pour l'exemple, à remplacer par un vrai statut de prod */}
+                      <StatusBadge 
+                        status={idx === 0 ? 'warning' : 'neutral'} 
+                        text={idx === 0 ? 'Urgent' : 'En attente'} 
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => onViewSheet?.(sheet)}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {sheets.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      Aucune commande en cours. Importez un PDF pour commencer.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
-      {/* Chat Assistant (Hidden but present) */}
+      {/* Assistant Flottant */}
       <ChatAssistant
         sheets={sheets}
-        onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
         isMinimized={isChatMinimized}
+        onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
       />
-      
-      {/* Global Styles for Scrollbar & Animations */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0F1115; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
-        
-        @keyframes slideRight {
-          from { opacity: 0; transform: translateX(-20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .animate-slideRight { animation: slideRight 0.5s ease-out forwards; }
-        
-        @keyframes slideLeft {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .animate-slideLeft { animation: slideLeft 0.5s ease-out forwards; }
-      `}</style>
     </div>
   );
 }
