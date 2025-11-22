@@ -1,464 +1,395 @@
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, AlertCircle, Clock, Zap, Target, Package, CheckCircle2, Eye, ArrowRight, Info, AlertTriangle } from 'lucide-react';
+import { 
+  TrendingUp, AlertTriangle, Clock, Zap, Package, 
+  CheckCircle2, ArrowRight, Sparkles, Brain, 
+  Calendar, ChevronRight, MoreHorizontal, Activity,
+  AlertCircle, BarChart3
+} from 'lucide-react';
 import { DebitSheet } from '../types';
 import ChatAssistant from './ChatAssistant';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
   sheets: DebitSheet[];
   onViewSheet?: (sheet: DebitSheet) => void;
 }
 
-interface Anomaly {
-  id: string;
-  type: 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-  sheet?: DebitSheet;
-}
+// --- Composants UI Premium (Micro-Components) ---
+
+const PremiumCard = ({ children, className = "", gradient = false }: { children: React.ReactNode, className?: string, gradient?: boolean }) => (
+  <div className={`relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md ${className}`}>
+    {gradient && (
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-slate-50 opacity-50" />
+    )}
+    <div className="relative z-10">{children}</div>
+  </div>
+);
+
+const StatusBadge = ({ status, text }: { status: 'success' | 'warning' | 'error' | 'neutral', text: string }) => {
+  const colors = {
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    warning: 'bg-amber-50 text-amber-700 border-amber-100',
+    error: 'bg-rose-50 text-rose-700 border-rose-100',
+    neutral: 'bg-slate-50 text-slate-600 border-slate-100',
+  };
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors[status]}`}>
+      {text}
+    </span>
+  );
+};
+
+// --- Logique Principale ---
 
 export default function Dashboard({ sheets, onViewSheet }: DashboardProps) {
-  const [showChat, setShowChat] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(true);
 
-  const { insights, anomalies } = useMemo(() => {
+  // 🧠 LE CERVEAU DU DASHBOARD (Calculs IA)
+  const intelligence = useMemo(() => {
     const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
+    
+    // 1. Filtrage de base
     const activeSheets = sheets.filter(s => !s.fini && !s.livre);
-    const completedSheets = sheets.filter(s => s.fini);
-    const deliveredSheets = sheets.filter(s => s.livre);
-
-    const recentSheets = sheets.filter(s => {
-      const creationDate = new Date(s.dateCreation);
-      return creationDate >= sevenDaysAgo;
-    });
-
-    const urgentSheets = activeSheets.filter(sheet => {
+    const completedToday = sheets.filter(s => s.fini && s.dateFinition && new Date(s.dateFinition).getDate() === now.getDate()).length;
+    
+    // 2. Analyse d'Urgence (Scoring)
+    const prioritizedSheets = activeSheets.map(sheet => {
+      let score = 0;
+      let urgentReason = "";
+      
+      // Facteur Délai
       const delaiStr = sheet.delai?.trim();
       const delaiDays = delaiStr && !isNaN(parseInt(delaiStr)) ? parseInt(delaiStr) : null;
-      if (delaiDays === null || delaiDays <= 0) return false;
-      const creationDate = new Date(sheet.dateCreation);
-      const dueDate = new Date(creationDate);
-      dueDate.setDate(dueDate.getDate() + delaiDays);
-      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return daysUntilDue <= 3 && daysUntilDue >= 0;
-    });
+      let daysRemaining = null;
 
-    const overdueSheets = activeSheets.filter(sheet => {
-      const delaiStr = sheet.delai?.trim();
-      const delaiDays = delaiStr && !isNaN(parseInt(delaiStr)) ? parseInt(delaiStr) : null;
-      if (delaiDays === null || delaiDays <= 0) return false;
-      const creationDate = new Date(sheet.dateCreation);
-      const dueDate = new Date(creationDate);
-      dueDate.setDate(dueDate.getDate() + delaiDays);
-      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return daysUntilDue < 0;
-    });
-
-    const totalM2Active = activeSheets.reduce((sum, s) => sum + s.m2, 0);
-    const totalM3Active = activeSheets.reduce((sum, s) => sum + s.m3, 0);
-    const totalM2ThisWeek = recentSheets.reduce((sum, s) => sum + s.m2, 0);
-
-    const sheetsWithDelai = completedSheets.filter(s => s.dateFinition);
-    const avgDelai = sheetsWithDelai.length > 0
-      ? sheetsWithDelai.reduce((sum, s) => {
-          const creationDate = new Date(s.dateCreation);
-          const finitionDate = s.dateFinition ? new Date(s.dateFinition) : new Date();
-          const daysSpent = Math.ceil((finitionDate.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24));
-          return sum + daysSpent;
-        }, 0) / sheetsWithDelai.length
-      : 0;
-
-    const workloadScore = Math.min(100, (activeSheets.length / 20) * 100);
-    const completionRate = sheets.length > 0 ? (completedSheets.length / sheets.length) * 100 : 0;
-
-    const previous7Days = sheets.filter(s => {
-      const creationDate = new Date(s.dateCreation);
-      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-      return creationDate >= fourteenDaysAgo && creationDate < sevenDaysAgo;
-    });
-
-    const trendNewOrders = recentSheets.length - previous7Days.length;
-
-    const detected: Anomaly[] = [];
-
-    sheets.forEach(sheet => {
-      if (sheet.m2 > 1000) {
-        detected.push({
-          id: `dim-${sheet.id}`,
-          type: 'warning',
-          title: 'Surface exceptionnellement élevée',
-          message: `${sheet.numeroOS} - ${sheet.m2.toFixed(2)} m²`,
-          sheet
-        });
+      if (delaiDays !== null) {
+        const creationDate = new Date(sheet.dateCreation);
+        const dueDate = new Date(creationDate);
+        dueDate.setDate(dueDate.getDate() + delaiDays);
+        daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysRemaining < 0) { score += 50; urgentReason = "En retard"; }
+        else if (daysRemaining <= 2) { score += 30; urgentReason = "Échéance imminente"; }
+        else if (daysRemaining <= 5) { score += 10; }
       }
 
-      const epaisseurNum = parseFloat(sheet.epaisseur);
-      if (!isNaN(epaisseurNum) && epaisseurNum > 100) {
-        detected.push({
-          id: `ep-${sheet.id}`,
-          type: 'error',
-          title: 'Épaisseur incorrecte',
-          message: `${sheet.numeroOS} - ${sheet.epaisseur}cm (probablement en mm)`,
-          sheet
-        });
-      }
+      // Facteur Complexité (Volume/Surface)
+      if (sheet.m2 > 50 || sheet.m3 > 2) { score += 5; }
 
-      if (!sheet.fini && !sheet.livre) {
-        const delaiStr = sheet.delai?.trim();
-        const delaiDays = delaiStr && !isNaN(parseInt(delaiStr)) ? parseInt(delaiStr) : null;
+      return { ...sheet, score, daysRemaining, urgentReason };
+    }).sort((a, b) => b.score - a.score);
 
-        if (delaiDays !== null && delaiDays > 0) {
-          const creationDate = new Date(sheet.dateCreation);
-          const dueDate = new Date(creationDate);
-          dueDate.setDate(dueDate.getDate() + delaiDays);
-          const daysOverdue = Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+    const highPriority = prioritizedSheets.filter(s => s.score >= 30);
+    
+    // 3. Analyse de Charge
+    const totalActiveM2 = activeSheets.reduce((acc, s) => acc + s.m2, 0);
+    const totalActiveM3 = activeSheets.reduce((acc, s) => acc + s.m3, 0);
+    
+    // Simuler une capacité machine (à remplacer par vraie data plus tard)
+    const capacityScore = Math.min(100, (activeSheets.length / 15) * 100); 
+    let loadStatus: 'light' | 'optimal' | 'heavy' | 'critical' = 'optimal';
+    if (capacityScore < 30) loadStatus = 'light';
+    else if (capacityScore > 80) loadStatus = 'heavy';
+    else if (capacityScore > 95) loadStatus = 'critical';
 
-          if (daysOverdue > 0) {
-            detected.push({
-              id: `retard-${sheet.id}`,
-              type: 'error',
-              title: 'Commande en retard',
-              message: `${sheet.numeroOS} - ${sheet.nomClient} (+${daysOverdue}j)`,
-              sheet
-            });
-          }
-        }
-      }
-
-      if (sheet.fini && !sheet.livre && sheet.dateFinition) {
-        const finitionDate = new Date(sheet.dateFinition);
-        const daysSinceFinished = Math.ceil((now.getTime() - finitionDate.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (daysSinceFinished > 7) {
-          detected.push({
-            id: `nonlivre-${sheet.id}`,
-            type: 'warning',
-            title: 'Commande non livrée',
-            message: `${sheet.numeroOS} - Terminée depuis ${daysSinceFinished}j`,
-            sheet
-          });
-        }
-      }
-
-      if (sheet.m2 === 0 && sheet.m3 === 0) {
-        detected.push({
-          id: `zero-${sheet.id}`,
-          type: 'error',
-          title: 'Quantités nulles',
-          message: `${sheet.numeroOS} - Aucune surface ni volume`,
-          sheet
-        });
-      }
-    });
+    // 4. Génération de l'Insight IA du jour (Phrase naturelle)
+    let dailyInsight = "Activité normale détectée. Flux de production stable.";
+    if (highPriority.length > 3) dailyInsight = "Attention : Accumulation de commandes urgentes. Priorisez la découpe.";
+    else if (capacityScore > 90) dailyInsight = "Surcharge machine probable. Envisagez de décaler les livraisons non urgentes.";
+    else if (completedToday > 3) dailyInsight = "Excellent rythme aujourd'hui ! La production est fluide.";
 
     return {
-      insights: {
-        activeSheets: activeSheets.length,
-        completedSheets: completedSheets.length,
-        deliveredSheets: deliveredSheets.length,
-        urgentSheets: urgentSheets.length,
-        overdueSheets: overdueSheets.length,
-        recentSheets: recentSheets.length,
-        totalM2Active,
-        totalM3Active,
-        totalM2ThisWeek,
-        avgDelai: Math.round(avgDelai),
-        workloadScore: Math.round(workloadScore),
-        completionRate: Math.round(completionRate),
-        trendNewOrders
-      },
-      anomalies: detected.slice(0, 8)
+      activeCount: activeSheets.length,
+      highPriority,
+      totalActiveM2,
+      totalActiveM3,
+      loadStatus,
+      capacityScore,
+      dailyInsight,
+      completedToday
     };
   }, [sheets]);
 
-  const getWorkloadColor = (score: number) => {
-    if (score < 40) return { bg: 'from-emerald-500 to-teal-500', text: 'text-emerald-700', ring: 'ring-emerald-200' };
-    if (score < 70) return { bg: 'from-amber-500 to-orange-500', text: 'text-amber-700', ring: 'ring-amber-200' };
-    return { bg: 'from-red-500 to-rose-500', text: 'text-red-700', ring: 'ring-red-200' };
+  // Helpers d'affichage
+  const getLoadColor = (score: number) => {
+    if (score < 50) return 'text-emerald-600';
+    if (score < 80) return 'text-amber-600';
+    return 'text-rose-600';
   };
 
-  const getWorkloadLabel = (score: number) => {
-    if (score < 40) return 'Faible';
-    if (score < 70) return 'Modérée';
-    return 'Élevée';
-  };
-
-  const workloadColor = getWorkloadColor(insights.workloadScore);
+  const today = format(new Date(), 'dQ MMMM yyyy', { locale: fr });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-slate-50/50 p-6 lg:p-10 font-sans text-slate-900">
+      <div className="mx-auto max-w-7xl space-y-8">
+        
+        {/* --- HEADER: Welcoming & Context --- */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Dashboard Intelligent</h1>
-            <p className="text-slate-600">Vue d'ensemble et insights IA en temps réel</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Tableau de Bord
+            </h1>
+            <p className="mt-1 text-slate-500 flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> {today}
+            </p>
           </div>
-          <div className="hidden md:flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-slate-600">Données en direct</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-                  <Package className="h-6 w-6 text-white" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-slate-900">{insights.activeSheets}</div>
-                  <div className="text-xs text-slate-500 mt-1">commandes</div>
-                </div>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-600 mb-2">Commandes Actives</h3>
-              <div className="flex items-center space-x-3 text-xs text-slate-500">
-                <span className="font-medium">{insights.totalM2Active.toFixed(0)} m²</span>
-                <span className="text-slate-300">•</span>
-                <span className="font-medium">{insights.totalM3Active.toFixed(2)} m³</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-slate-900">{insights.urgentSheets}</div>
-                  <div className="text-xs text-slate-500 mt-1">urgentes</div>
-                </div>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-600 mb-2">Urgences</h3>
-              {insights.overdueSheets > 0 && (
-                <div className="flex items-center space-x-1 text-xs text-red-600 font-semibold">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>{insights.overdueSheets} en retard</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl shadow-lg">
-                  <CheckCircle2 className="h-6 w-6 text-white" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-slate-900">{insights.completionRate}%</div>
-                  <div className="text-xs text-slate-500 mt-1">complété</div>
-                </div>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-600 mb-2">Taux de Complétion</h3>
-              <div className="w-full bg-slate-200 rounded-full h-1.5">
-                <div
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${insights.completionRate}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <div className={`absolute inset-0 bg-gradient-to-br ${workloadColor.bg} opacity-5 group-hover:opacity-10 transition-opacity duration-300`}></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 bg-gradient-to-br ${workloadColor.bg} rounded-xl shadow-lg`}>
-                  <Zap className="h-6 w-6 text-white" />
-                </div>
-                <div className="text-right">
-                  <div className={`text-3xl font-bold ${workloadColor.text}`}>{insights.workloadScore}</div>
-                  <div className="text-xs text-slate-500 mt-1">sur 100</div>
-                </div>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-600 mb-2">Charge de Travail</h3>
-              <div className={`text-xs font-semibold ${workloadColor.text}`}>
-                {getWorkloadLabel(insights.workloadScore)}
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+            <button className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900">
+              <Brain className="h-4 w-4 text-violet-500 transition group-hover:scale-110" />
+              <span>Assistant IA</span>
+            </button>
+            <button className="group flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-slate-800 hover:shadow-lg active:scale-95">
+              <Sparkles className="h-4 w-4 text-yellow-400" />
+              <span>Analyser</span>
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
-                <Target className="h-5 w-5 text-white" />
+        {/* --- SECTION 1: KPIS (Bento Grid Top) --- */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* KPI 1: Commandes Actives */}
+          <PremiumCard className="group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">En Production</p>
+                <h3 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+                  {intelligence.activeCount}
+                </h3>
               </div>
-              <h2 className="text-lg font-bold text-slate-900">Insights IA</h2>
+              <div className="rounded-xl bg-blue-50 p-3 text-blue-600 transition-colors group-hover:bg-blue-100">
+                <Package className="h-6 w-6" />
+              </div>
             </div>
+            <div className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-600">
+              <span className="bg-slate-100 px-2 py-1 rounded-md">{intelligence.totalActiveM2.toFixed(0)} m²</span>
+              <span className="bg-slate-100 px-2 py-1 rounded-md">{intelligence.totalActiveM3.toFixed(2)} m³</span>
+            </div>
+          </PremiumCard>
 
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl">
-                {insights.trendNewOrders >= 0 ? (
-                  <TrendingUp className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <TrendingDown className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1">
-                  <p className="text-sm text-slate-700">
-                    <span className="font-bold text-slate-900">{Math.abs(insights.trendNewOrders)}</span> {insights.trendNewOrders >= 0 ? 'nouvelles commandes' : 'commandes en moins'} cette semaine
+          {/* KPI 2: Urgences */}
+          <PremiumCard className={`group ${intelligence.highPriority.length > 0 ? 'ring-1 ring-rose-100' : ''}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Attention Requise</p>
+                <h3 className={`mt-2 text-3xl font-bold tracking-tight ${intelligence.highPriority.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                  {intelligence.highPriority.length}
+                </h3>
+              </div>
+              <div className={`rounded-xl p-3 transition-colors ${intelligence.highPriority.length > 0 ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-slate-50 text-slate-400'}`}>
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Commandes avec échéance &lt; 3 jours
+            </p>
+          </PremiumCard>
+
+          {/* KPI 3: Charge Machine (IA) */}
+          <PremiumCard>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Charge Atelier</p>
+                <h3 className={`mt-2 text-3xl font-bold tracking-tight ${getLoadColor(intelligence.capacityScore)}`}>
+                  {intelligence.capacityScore.toFixed(0)}%
+                </h3>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3 text-amber-600 group-hover:bg-amber-100">
+                <Activity className="h-6 w-6" />
+              </div>
+            </div>
+            <div className="mt-4 h-1.5 w-full rounded-full bg-slate-100">
+              <div 
+                className={`h-1.5 rounded-full transition-all duration-1000 ${intelligence.capacityScore > 80 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                style={{ width: `${intelligence.capacityScore}%` }}
+              />
+            </div>
+          </PremiumCard>
+
+          {/* KPI 4: Performance Jour */}
+          <PremiumCard>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Terminé auj.</p>
+                <h3 className="mt-2 text-3xl font-bold tracking-tight text-emerald-600">
+                  {intelligence.completedToday}
+                </h3>
+              </div>
+              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600 group-hover:bg-emerald-100">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="mt-4 flex items-center text-xs font-medium text-emerald-600">
+              <TrendingUp className="mr-1 h-3 w-3" /> Performance stable
+            </p>
+          </PremiumCard>
+        </div>
+
+        {/* --- SECTION 2: INTELLIGENCE GRID (Bento Layout) --- */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          
+          {/* Bloc 1: Analyse IA (Large) */}
+          <div className="col-span-1 lg:col-span-2">
+            <PremiumCard className="h-full !bg-gradient-to-br !from-slate-900 !to-slate-800 !text-white !border-slate-700">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-lg bg-white/10 backdrop-blur-sm">
+                  <Brain className="h-5 w-5 text-violet-300" />
+                </div>
+                <h3 className="text-lg font-semibold">Analyse StoneTrak AI</h3>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">Diagnostic en temps réel</p>
+                  <p className="text-xl font-medium leading-relaxed text-slate-100">
+                    "{intelligence.dailyInsight}"
                   </p>
                 </div>
-              </div>
 
-              <div className="flex items-start space-x-3 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl">
-                <TrendingUp className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-700">
-                    Production hebdomadaire : <span className="font-bold text-slate-900">{insights.totalM2ThisWeek.toFixed(0)} m²</span>
-                  </p>
-                </div>
-              </div>
-
-              {insights.avgDelai > 0 && (
-                <div className="flex items-start space-x-3 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl">
-                  <Clock className="h-5 w-5 text-indigo-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-700">
-                      Délai moyen : <span className="font-bold text-slate-900">{insights.avgDelai} jours</span>
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {insights.workloadScore > 80 && (
-                <div className="flex items-start space-x-3 p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-200">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-800">
-                      Charge critique ! Priorisez les urgences.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {insights.completionRate > 80 && insights.overdueSheets === 0 && (
-                <div className="flex items-start space-x-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-emerald-800">
-                      Performance excellente ! Aucun retard.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-white" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900">Anomalies Détectées</h2>
-              </div>
-              {anomalies.length > 0 && (
-                <span className="px-3 py-1 bg-rose-100 text-rose-700 text-xs font-semibold rounded-full">
-                  {anomalies.length}
-                </span>
-              )}
-            </div>
-
-            {anomalies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-3" />
-                <p className="text-slate-600 font-medium">Aucune anomalie détectée</p>
-                <p className="text-slate-400 text-sm mt-1">Toutes les commandes sont conformes</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                {anomalies.map(anomaly => (
-                  <div
-                    key={anomaly.id}
-                    className={`group flex items-start space-x-3 p-3 rounded-xl transition-all duration-200 ${
-                      anomaly.type === 'error'
-                        ? 'bg-red-50 hover:bg-red-100'
-                        : anomaly.type === 'warning'
-                        ? 'bg-orange-50 hover:bg-orange-100'
-                        : 'bg-blue-50 hover:bg-blue-100'
-                    }`}
-                  >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {anomaly.type === 'error' ? (
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                      ) : anomaly.type === 'warning' ? (
-                        <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      ) : (
-                        <Info className="h-4 w-4 text-blue-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className={`text-sm font-semibold ${
-                        anomaly.type === 'error' ? 'text-red-900' : anomaly.type === 'warning' ? 'text-orange-900' : 'text-blue-900'
-                      }`}>
-                        {anomaly.title}
-                      </h4>
-                      <p className={`text-xs mt-0.5 ${
-                        anomaly.type === 'error' ? 'text-red-700' : anomaly.type === 'warning' ? 'text-orange-700' : 'text-blue-700'
-                      }`}>
-                        {anomaly.message}
-                      </p>
-                    </div>
-                    {anomaly.sheet && onViewSheet && (
-                      <button
-                        onClick={() => onViewSheet(anomaly.sheet!)}
-                        className={`flex-shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 ${
-                          anomaly.type === 'error'
-                            ? 'hover:bg-red-200 text-red-700'
-                            : anomaly.type === 'warning'
-                            ? 'hover:bg-orange-200 text-orange-700'
-                            : 'hover:bg-blue-200 text-blue-700'
-                        }`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h4 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-yellow-400" /> Recommandation Prioritaire
+                    </h4>
+                    {intelligence.highPriority.length > 0 ? (
+                       <p className="text-sm text-slate-200">
+                         Traiter immédiatement la commande <span className="font-bold text-white">{intelligence.highPriority[0].numeroOS}</span> ({intelligence.highPriority[0].nomClient}).
+                       </p>
+                    ) : (
+                      <p className="text-sm text-slate-200">Aucune urgence critique. Optimisez le stock de tranches K2.</p>
                     )}
                   </div>
-                ))}
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <h4 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-emerald-400" /> Efficacité Production
+                    </h4>
+                    <p className="text-sm text-slate-200">
+                      Volume de découpe prévu à <span className="font-bold text-white">{(intelligence.totalActiveM2 * 0.8).toFixed(1)} m²</span> pour demain selon la charge actuelle.
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
+            </PremiumCard>
+          </div>
+
+          {/* Bloc 2: Actions Rapides / Alertes (Side) */}
+          <div className="col-span-1">
+            <PremiumCard className="h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-slate-400" />
+                  Alertes Système
+                </h3>
+                <span className="text-xs font-medium text-slate-400">Temps réel</span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                {intelligence.highPriority.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-slate-400">
+                    <CheckCircle2 className="w-12 h-12 mb-2 opacity-20" />
+                    <p className="text-sm">Tout est sous contrôle</p>
+                  </div>
+                ) : (
+                  intelligence.highPriority.slice(0, 4).map((sheet) => (
+                    <div 
+                      key={sheet.id} 
+                      onClick={() => onViewSheet?.(sheet)}
+                      className="group flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:border-rose-100 hover:bg-rose-50"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-rose-600 shadow-sm group-hover:scale-110 transition-transform">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="truncate text-sm font-semibold text-slate-900">{sheet.numeroOS}</p>
+                          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
+                             {sheet.daysRemaining !== null && sheet.daysRemaining < 0 ? `+${Math.abs(sheet.daysRemaining)}j` : `${sheet.daysRemaining}j`}
+                          </span>
+                        </div>
+                        <p className="truncate text-xs text-slate-500">{sheet.nomClient}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rose-400" />
+                    </div>
+                  ))
+                )}
+              </div>
+            </PremiumCard>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold mb-2">Besoin d'aide ?</h3>
-              <p className="text-slate-300 text-sm">L'IA est là pour vous accompagner dans la gestion de votre production</p>
-            </div>
-            <div className="hidden md:flex items-center space-x-2">
-              <span className="text-slate-400 text-sm">Propulsé par IA</span>
-              <ArrowRight className="h-5 w-5 text-slate-400" />
-            </div>
+        {/* --- SECTION 3: WORKFLOW (Liste intelligente) --- */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-900">File de Production Prioritaire</h2>
+            <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir tout le planning <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-6 py-4">Ordre (IA)</th>
+                  <th className="px-6 py-4">OS / Client</th>
+                  <th className="px-6 py-4">Matière</th>
+                  <th className="px-6 py-4">Dimensions</th>
+                  <th className="px-6 py-4">Statut</th>
+                  <th className="px-6 py-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {intelligence.highPriority.slice(0, 5).concat(sheets.filter(s => !s.fini).slice(0, 3)).slice(0, 5).map((sheet, idx) => (
+                  <tr key={sheet.id} className="group hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4">
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${idx < 2 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {idx + 1}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900">{sheet.numeroOS}</div>
+                      <div className="text-xs text-slate-500">{sheet.nomClient}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block max-w-[150px] truncate rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                        {sheet.fourniture}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-slate-500">
+                      {sheet.m2 > 0 ? <>{sheet.m2.toFixed(2)} m²</> : <>{sheet.m3.toFixed(2)} m³</>}
+                    </td>
+                    <td className="px-6 py-4">
+                      {/* Logic simulée pour l'exemple, à remplacer par un vrai statut de prod */}
+                      <StatusBadge 
+                        status={idx === 0 ? 'warning' : 'neutral'} 
+                        text={idx === 0 ? 'Urgent' : 'En attente'} 
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => onViewSheet?.(sheet)}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {sheets.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      Aucune commande en cours. Importez un PDF pour commencer.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+
       </div>
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-      `}</style>
-
+      {/* Assistant Flottant */}
       <ChatAssistant
         sheets={sheets}
         isMinimized={isChatMinimized}
