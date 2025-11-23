@@ -3,6 +3,7 @@ import { X, Save, Plus, Trash2, FileText, User, Package, Calendar, Edit } from '
 import { Quote, QuoteItem, PricingParameters, PricingResult } from '../../types';
 import { formatPrice, calculateQuoteTotals } from '../../utils/pricingCalculations';
 import { useQuotes } from '../../hooks/useQuotes';
+import { useClients } from '../../hooks/useClients';
 import CostCalculatorModal from './CostCalculatorModal';
 
 interface QuoteEditModalProps {
@@ -14,6 +15,7 @@ interface QuoteEditModalProps {
 
 export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: QuoteEditModalProps) {
   const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem } = useQuotes();
+  const { clients, findClientByCompany, saveOrUpdateClient } = useClients();
 
   // États du formulaire
   const [clientCompany, setClientCompany] = useState('');
@@ -21,6 +23,8 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   const [clientAddress, setClientAddress] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredClients, setFilteredClients] = useState<typeof clients>([]);
   const [siteName, setSiteName] = useState('');
   const [quoteDate, setQuoteDate] = useState('');
   const [estimatedDelay, setEstimatedDelay] = useState('');
@@ -60,6 +64,33 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       setItems(quote.items || []);
     }
   }, [quote, isOpen]);
+
+  // Filtrer les clients en fonction de la saisie
+  useEffect(() => {
+    if (clientCompany.trim().length > 0) {
+      const filtered = clients.filter(client =>
+        client.companyName.toLowerCase().includes(clientCompany.toLowerCase())
+      );
+      setFilteredClients(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setFilteredClients([]);
+      setShowSuggestions(false);
+    }
+  }, [clientCompany, clients]);
+
+  // Gérer la sélection d'un client
+  const handleSelectClient = async (companyName: string) => {
+    const client = await findClientByCompany(companyName);
+    if (client) {
+      setClientCompany(client.companyName);
+      setClientContactName(client.contactName || '');
+      setClientAddress(client.address || '');
+      setClientPhone(client.phone || '');
+      setClientEmail(client.email || '');
+    }
+    setShowSuggestions(false);
+  };
 
   // Calculer les totaux
   const totals = calculateQuoteTotals(items, discountPercent, tvaPercent);
@@ -197,6 +228,17 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
 
     setSaving(true);
     try {
+      // Sauvegarder ou mettre à jour le client
+      if (clientCompany.trim()) {
+        await saveOrUpdateClient({
+          companyName: clientCompany,
+          contactName: clientContactName || null,
+          address: clientAddress || null,
+          phone: clientPhone || null,
+          email: clientEmail || null
+        });
+      }
+
       // Mettre à jour le devis principal
       const updatedQuote: Quote = {
         ...quote,
@@ -279,7 +321,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations du devis</h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Client (entreprise) *
                     </label>
@@ -287,10 +329,32 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                       type="text"
                       value={clientCompany}
                       onChange={(e) => setClientCompany(e.target.value)}
+                      onFocus={() => {
+                        if (clientCompany.trim().length > 0 && filteredClients.length > 0) {
+                          setShowSuggestions(true);
+                        }
+                      }}
                       placeholder="Nom de l'entreprise"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
+                    {showSuggestions && filteredClients.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredClients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => handleSelectClient(client.companyName)}
+                            className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">{client.companyName}</div>
+                            {client.contactName && (
+                              <div className="text-sm text-gray-600">{client.contactName}</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>

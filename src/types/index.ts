@@ -401,6 +401,19 @@ export interface Quote {
   items?: QuoteItem[];
 }
 
+export interface Client {
+  id: string;
+  companyName: string;
+  contactName: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+}
+
 export interface QuoteItem {
   id: string;
   quoteId: string;
