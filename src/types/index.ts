@@ -414,6 +414,7 @@ export interface QuoteItem {
   laborCost: number;
   consumablesCost: number;
   fabricationCost: number;
+  overheadCoefficient: number; // Frais généraux
   unitCostPrice: number | null;
   unitSellingPrice: number;
   totalPrice: number;
@@ -443,6 +444,7 @@ export interface PricingParameters {
   marginCoefficient: number;
   laborCost: number;
   consumablesCost: number;
+  overheadCoefficient: number; // Frais généraux (ex: 1.23 = +23%)
 
   // Pour manuel
   manualPrice?: number;

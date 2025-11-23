@@ -9,7 +9,8 @@ export function calculateFromBlock(
   wasteFactor: number,
   marginCoefficient: number,
   laborCost: number = 0,
-  consumablesCost: number = 0
+  consumablesCost: number = 0,
+  overheadCoefficient: number = 1.0
 ): PricingResult {
   const calculations: string[] = [];
 
@@ -51,8 +52,15 @@ export function calculateFromBlock(
   }
 
   // 8. Appliquer le coefficient de marge
-  const unitSellingPrice = unitCostPrice * marginCoefficient;
-  calculations.push(`Prix de vente (×${marginCoefficient}): ${unitSellingPrice.toFixed(2)}€/m²`);
+  const priceWithMargin = unitCostPrice * marginCoefficient;
+  calculations.push(`Prix de vente (×${marginCoefficient}): ${priceWithMargin.toFixed(2)}€/m²`);
+
+  // 9. Appliquer les frais généraux
+  const unitSellingPrice = priceWithMargin * overheadCoefficient;
+  if (overheadCoefficient !== 1.0) {
+    const overheadPercent = ((overheadCoefficient - 1) * 100).toFixed(0);
+    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${unitSellingPrice.toFixed(2)}€/m²`);
+  }
 
   const marginAmount = unitSellingPrice - unitCostPrice;
   const marginPercent = ((marginAmount / unitCostPrice) * 100);
@@ -78,7 +86,8 @@ export function calculateFromSlab(
   fabricationCost: number,
   marginCoefficient: number,
   laborCost: number = 0,
-  consumablesCost: number = 0
+  consumablesCost: number = 0,
+  overheadCoefficient: number = 1.0
 ): PricingResult {
   const calculations: string[] = [];
 
@@ -105,8 +114,15 @@ export function calculateFromSlab(
   const unitCostPrice = totalCosts;
 
   // 4. Appliquer le coefficient de marge
-  const unitSellingPrice = unitCostPrice * marginCoefficient;
-  calculations.push(`Prix de vente (×${marginCoefficient}): ${unitSellingPrice.toFixed(2)}€/m²`);
+  const priceWithMargin = unitCostPrice * marginCoefficient;
+  calculations.push(`Prix de vente (×${marginCoefficient}): ${priceWithMargin.toFixed(2)}€/m²`);
+
+  // 5. Appliquer les frais généraux
+  const unitSellingPrice = priceWithMargin * overheadCoefficient;
+  if (overheadCoefficient !== 1.0) {
+    const overheadPercent = ((overheadCoefficient - 1) * 100).toFixed(0);
+    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${unitSellingPrice.toFixed(2)}€/m²`);
+  }
 
   const marginAmount = unitSellingPrice - unitCostPrice;
   const marginPercent = ((marginAmount / unitCostPrice) * 100);
@@ -136,7 +152,8 @@ export function calculatePricing(params: PricingParameters): PricingResult {
       params.wasteFactor,
       params.marginCoefficient,
       params.laborCost,
-      params.consumablesCost
+      params.consumablesCost,
+      params.overheadCoefficient
     );
 
     // Calculer le total basé sur la quantité
@@ -157,7 +174,8 @@ export function calculatePricing(params: PricingParameters): PricingResult {
       params.fabricationCost || 0,
       params.marginCoefficient,
       params.laborCost,
-      params.consumablesCost
+      params.consumablesCost,
+      params.overheadCoefficient
     );
 
     // Calculer le total basé sur la quantité

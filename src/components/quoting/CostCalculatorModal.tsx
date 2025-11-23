@@ -37,6 +37,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
   const [marginCoefficient, setMarginCoefficient] = useState<number>(1.55);
   const [laborCost, setLaborCost] = useState<number>(0);
   const [consumablesCost, setConsumablesCost] = useState<number>(0);
+  const [overheadCoefficient, setOverheadCoefficient] = useState<number>(1.23);
 
   // Pour calcul manuel
   const [manualPrice, setManualPrice] = useState<number>(0);
@@ -60,6 +61,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
     marginCoefficient,
     laborCost,
     consumablesCost,
+    overheadCoefficient,
     manualPrice
   ]);
 
@@ -84,6 +86,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setMarginCoefficient(editingItem.marginCoefficient);
       setLaborCost(editingItem.laborCost);
       setConsumablesCost(editingItem.consumablesCost);
+      setOverheadCoefficient(editingItem.overheadCoefficient || 1.23);
 
       if (editingItem.calculationMethod === 'block') {
         setBlockPriceM3(editingItem.sourcePrice || 0);
@@ -108,6 +111,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setManualPrice(0);
       setLaborCost(0);
       setConsumablesCost(0);
+      setOverheadCoefficient(1.23);
       setWasteFactor(getSuggestedWasteFactor(activeTab));
       setMarginCoefficient(getSuggestedMargin(activeTab));
     }
@@ -131,6 +135,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
         marginCoefficient,
         laborCost,
         consumablesCost,
+        overheadCoefficient,
         manualPrice: activeTab === 'manual' ? manualPrice : undefined
       };
 
@@ -454,6 +459,21 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
                       />
                       <p className="text-xs text-gray-500 mt-1">Ex: 1.55 = 55% de marge</p>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Frais généraux
+                    </label>
+                    <input
+                      type="number"
+                      value={overheadCoefficient}
+                      onChange={(e) => setOverheadCoefficient(Number(e.target.value))}
+                      min="1"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Ex: 1.23 = 23% de frais généraux (par défaut)</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

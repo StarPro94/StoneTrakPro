@@ -70,6 +70,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       laborCost: params.laborCost,
       consumablesCost: params.consumablesCost,
       fabricationCost: params.fabricationCost || 0,
+      overheadCoefficient: params.overheadCoefficient,
       unitCostPrice: result.unitCostPrice,
       unitSellingPrice: result.unitSellingPrice,
       totalPrice: result.totalPrice,
