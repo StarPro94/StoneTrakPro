@@ -15,7 +15,7 @@ export function useDebitSheets() {
     const parsed = new Date(dateValue);
     return isNaN(parsed.getTime()) ? fallback : parsed;
   };
-  const fetchSheets = async () => {
+  const fetchSheets = async (silent: boolean = false) => {
     // Si aucun utilisateur connecté, vider les données et arrêter
     if (!user) {
       setSheets([]);
@@ -33,7 +33,10 @@ export function useDebitSheets() {
     }
 
     try {
-      setLoading(true);
+      // Ne pas afficher le spinner si c'est un refresh silencieux
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const { data: sheetsData, error: sheetsError } = await supabase!
@@ -230,9 +233,9 @@ export function useDebitSheets() {
       console.log(`✅ Tous les ${items.length} items mis à jour avec succès`);
 
       // Le Realtime va automatiquement mettre à jour la feuille
-      // Mais pour les updates on force le refresh car c'est plus fiable
+      // Mais pour les updates on force le refresh car c'est plus fiable (en mode silencieux)
       console.log('Rechargement des feuilles après mise à jour...');
-      await fetchSheets();
+      await fetchSheets(true);
       console.log('Rechargement terminé après mise à jour');
 
     } catch (err: any) {
@@ -301,9 +304,9 @@ export function useDebitSheets() {
         if (itemsError) throw itemsError;
       }
 
-      // Forcer un rechargement pour s'assurer que les données sont à jour
+      // Forcer un rechargement pour s'assurer que les données sont à jour (en mode silencieux)
       console.log('Rechargement des feuilles après ajout...');
-      await fetchSheets();
+      await fetchSheets(true);
       console.log('Rechargement terminé après ajout');
 
     } catch (err: any) {
@@ -332,9 +335,9 @@ export function useDebitSheets() {
       console.log('Résultat de la suppression en base:', error ? 'ERREUR' : 'SUCCÈS');
       if (error) throw error;
 
-      // Forcer un rechargement immédiat pour être sûr que la feuille disparaît
+      // Forcer un rechargement immédiat pour être sûr que la feuille disparaît (en mode silencieux)
       console.log('Rechargement des feuilles après suppression...');
-      await fetchSheets();
+      await fetchSheets(true);
       console.log('Rechargement terminé après suppression');
 
       console.log('=== FIN SUPPRESSION SHEET ===');
@@ -398,9 +401,9 @@ export function useDebitSheets() {
 
       console.log('Import Excel réussi, sheet_id:', result.sheet_id);
 
-      // Forcer un rechargement pour s'assurer que les données sont à jour
+      // Forcer un rechargement pour s'assurer que les données sont à jour (en mode silencieux)
       console.log('Rechargement des feuilles après import Excel...');
-      await fetchSheets();
+      await fetchSheets(true);
       console.log('Rechargement terminé');
       console.log('=== FIN IMPORT EXCEL ===');
 
@@ -470,9 +473,9 @@ export function useDebitSheets() {
 
       console.log('Import PDF réussi, sheet_id:', result.sheet_id);
 
-      // Forcer un rechargement pour s'assurer que les données sont à jour
+      // Forcer un rechargement pour s'assurer que les données sont à jour (en mode silencieux)
       console.log('Rechargement des feuilles après import PDF...');
-      await fetchSheets();
+      await fetchSheets(true);
       console.log('Rechargement terminé');
       console.log('=== FIN IMPORT PDF ===');
 
