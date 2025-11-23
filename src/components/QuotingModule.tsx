@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, Plus, Calculator, TrendingUp, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { FileText, Plus, Calculator, TrendingUp, DollarSign, CheckCircle, XCircle, Clock, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Calendar } from 'lucide-react';
 import { useQuotes } from '../hooks/useQuotes';
 import { Quote, QuoteStatus, PricingParameters, PricingResult, QuoteItem } from '../types';
 import { UserProfile } from '../hooks/useUserProfile';
@@ -16,6 +16,10 @@ interface QuotingModuleProps {
   isBureau: boolean;
 }
 
+type SortField = 'quoteReference' | 'clientCompany' | 'siteName' | 'quoteDate' | 'status' | 'totalTtc' | 'commercial';
+type SortDirection = 'asc' | 'desc';
+type PeriodFilter = 'all' | 'week' | 'month' | 'year';
+
 export default function QuotingModule({ profileLoading, profile, isAdmin, isBureau }: QuotingModuleProps) {
   const { quotes, loading, error, createQuote, updateQuoteStatus, deleteQuote } = useQuotes();
   const [showCalculator, setShowCalculator] = useState(false);
@@ -23,17 +27,183 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // Filtres et tri
+  const [sortField, setSortField] = useState<SortField>('quoteDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'all'>('all');
+  const [clientFilter, setClientFilter] = useState<string>('');
+  const [projectFilter, setProjectFilter] = useState<string>('');
+  const [commercialFilter, setCommercialFilter] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+
   const canCreateQuotes = isAdmin || isBureau;
   const canViewPricing = isAdmin || isBureau;
 
-  // Statistiques
+  // Fonction de tri
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filtrer et trier les devis
+  const filteredAndSortedQuotes = useMemo(() => {
+    let filtered = [...quotes];
+
+    // Filtre de période
+    if (periodFilter !== 'all') {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+      filtered = filtered.filter(quote => {
+        const quoteDate = new Date(quote.quoteDate);
+        switch (periodFilter) {
+          case 'week':
+            return quoteDate >= startOfWeek;
+          case 'month':
+            return quoteDate >= startOfMonth;
+          case 'year':
+            return quoteDate >= startOfYear;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Filtre par statut
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(quote => quote.status === statusFilter);
+    }
+
+    // Filtre par client
+    if (clientFilter) {
+      filtered = filtered.filter(quote =>
+        quote.clientCompany.toLowerCase().includes(clientFilter.toLowerCase())
+      );
+    }
+
+    // Filtre par projet
+    if (projectFilter) {
+      filtered = filtered.filter(quote =>
+        quote.siteName?.toLowerCase().includes(projectFilter.toLowerCase())
+      );
+    }
+
+    // Filtre par commercial
+    if (commercialFilter) {
+      filtered = filtered.filter(quote =>
+        quote.commercial?.toLowerCase().includes(commercialFilter.toLowerCase())
+      );
+    }
+
+    // Tri
+    filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'quoteReference':
+          aValue = a.quoteReference || '';
+          bValue = b.quoteReference || '';
+          break;
+        case 'clientCompany':
+          aValue = a.clientCompany;
+          bValue = b.clientCompany;
+          break;
+        case 'siteName':
+          aValue = a.siteName || '';
+          bValue = b.siteName || '';
+          break;
+        case 'quoteDate':
+          aValue = new Date(a.quoteDate).getTime();
+          bValue = new Date(b.quoteDate).getTime();
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case 'totalTtc':
+          aValue = a.totalTtc;
+          bValue = b.totalTtc;
+          break;
+        case 'commercial':
+          aValue = a.commercial || '';
+          bValue = b.commercial || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string') {
+        const comparison = aValue.localeCompare(bValue);
+        return sortDirection === 'asc' ? comparison : -comparison;
+      } else {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+    });
+
+    return filtered;
+  }, [quotes, periodFilter, statusFilter, clientFilter, projectFilter, commercialFilter, sortField, sortDirection]);
+
+  // Listes uniques pour les filtres
+  const uniqueClients = useMemo(() => {
+    const clients = new Set(quotes.map(q => q.clientCompany));
+    return Array.from(clients).sort();
+  }, [quotes]);
+
+  const uniqueProjects = useMemo(() => {
+    const projects = new Set(quotes.map(q => q.siteName).filter(Boolean));
+    return Array.from(projects).sort();
+  }, [quotes]);
+
+  const uniqueCommercials = useMemo(() => {
+    const commercials = new Set(quotes.map(q => q.commercial).filter(Boolean));
+    return Array.from(commercials).sort();
+  }, [quotes]);
+
+  // Statistiques basées sur les devis filtrés
   const stats = {
-    total: quotes.length,
-    draft: quotes.filter(q => q.status === 'draft').length,
-    sent: quotes.filter(q => q.status === 'sent').length,
-    accepted: quotes.filter(q => q.status === 'accepted').length,
-    rejected: quotes.filter(q => q.status === 'rejected').length,
-    totalAmount: quotes.reduce((sum, q) => sum + q.totalTtc, 0)
+    total: filteredAndSortedQuotes.length,
+    draft: filteredAndSortedQuotes.filter(q => q.status === 'draft').length,
+    sent: filteredAndSortedQuotes.filter(q => q.status === 'sent').length,
+    accepted: filteredAndSortedQuotes.filter(q => q.status === 'accepted').length,
+    rejected: filteredAndSortedQuotes.filter(q => q.status === 'rejected').length,
+    totalAmount: filteredAndSortedQuotes.reduce((sum, q) => sum + q.totalTtc, 0)
+  };
+
+  // Réinitialiser tous les filtres
+  const clearFilters = () => {
+    setPeriodFilter('all');
+    setStatusFilter('all');
+    setClientFilter('');
+    setProjectFilter('');
+    setCommercialFilter('');
+  };
+
+  // Nombre de filtres actifs
+  const activeFiltersCount = [
+    periodFilter !== 'all',
+    statusFilter !== 'all',
+    clientFilter !== '',
+    projectFilter !== '',
+    commercialFilter !== ''
+  ].filter(Boolean).length;
+
+  // Icône de tri
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 opacity-30" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-4 w-4" />
+      : <ArrowDown className="h-4 w-4" />;
   };
 
   const handleCreateQuote = async () => {
@@ -191,18 +361,164 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
           </div>
         </div>
 
+        {/* Filtres */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Filtres</h3>
+              {activeFiltersCount > 0 && (
+                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center space-x-1"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Effacer</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {showFilters ? 'Masquer' : 'Afficher'}
+              </button>
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+              {/* Filtre de période */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Période
+                </label>
+                <select
+                  value={periodFilter}
+                  onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Toutes les périodes</option>
+                  <option value="week">Cette semaine</option>
+                  <option value="month">Ce mois</option>
+                  <option value="year">Cette année</option>
+                </select>
+              </div>
+
+              {/* Filtre de statut */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as QuoteStatus | 'all')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="draft">Brouillon</option>
+                  <option value="sent">Envoyé</option>
+                  <option value="accepted">Accepté</option>
+                  <option value="rejected">Refusé</option>
+                  <option value="expired">Expiré</option>
+                </select>
+              </div>
+
+              {/* Filtre de client */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+                <input
+                  type="text"
+                  value={clientFilter}
+                  onChange={(e) => setClientFilter(e.target.value)}
+                  placeholder="Rechercher un client..."
+                  list="clients-list"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <datalist id="clients-list">
+                  {uniqueClients.map(client => (
+                    <option key={client} value={client} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Filtre de projet */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Projet</label>
+                <input
+                  type="text"
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  placeholder="Rechercher un projet..."
+                  list="projects-list"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <datalist id="projects-list">
+                  {uniqueProjects.map(project => (
+                    <option key={project} value={project} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Filtre de commercial */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Commercial</label>
+                <input
+                  type="text"
+                  value={commercialFilter}
+                  onChange={(e) => setCommercialFilter(e.target.value)}
+                  placeholder="Rechercher un commercial..."
+                  list="commercials-list"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <datalist id="commercials-list">
+                  {uniqueCommercials.map(commercial => (
+                    <option key={commercial} value={commercial} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Liste des devis */}
         <div className="bg-white rounded-lg sm:rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-gray-200">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Liste des devis</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+              Liste des devis
+              {activeFiltersCount > 0 && (
+                <span className="text-sm font-normal text-gray-600 ml-2">
+                  ({filteredAndSortedQuotes.length} sur {quotes.length})
+                </span>
+              )}
+            </h2>
           </div>
 
-          {quotes.length === 0 ? (
+          {filteredAndSortedQuotes.length === 0 ? (
             <div className="p-8 sm:p-12 text-center">
               <Calculator className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-2">Aucun devis</h3>
-              <p className="text-sm sm:text-base text-gray-600 mb-4">Commencez par créer votre premier devis</p>
-              {canCreateQuotes && (
+              <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-2">
+                {activeFiltersCount > 0 ? 'Aucun devis trouvé' : 'Aucun devis'}
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">
+                {activeFiltersCount > 0
+                  ? 'Essayez de modifier vos critères de recherche'
+                  : 'Commencez par créer votre premier devis'}
+              </p>
+              {activeFiltersCount > 0 ? (
+                <button
+                  onClick={clearFilters}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 inline-flex items-center space-x-2"
+                >
+                  <X className="h-5 w-5" />
+                  <span>Effacer les filtres</span>
+                </button>
+              ) : canCreateQuotes ? (
                 <button
                   onClick={handleCreateQuote}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 inline-flex items-center space-x-2"
@@ -210,7 +526,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                   <Plus className="h-5 w-5" />
                   <span>Créer un devis</span>
                 </button>
-              )}
+              ) : null}
             </div>
           ) : (
             <>
@@ -219,17 +535,65 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant TTC</th>
+                      <th
+                        onClick={() => handleSort('quoteReference')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Référence</span>
+                          <SortIcon field="quoteReference" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('clientCompany')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Client</span>
+                          <SortIcon field="clientCompany" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('siteName')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Projet</span>
+                          <SortIcon field="siteName" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('quoteDate')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Date</span>
+                          <SortIcon field="quoteDate" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('status')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Statut</span>
+                          <SortIcon field="status" />
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSort('totalTtc')}
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center justify-end space-x-1">
+                          <span>Montant TTC</span>
+                          <SortIcon field="totalTtc" />
+                        </div>
+                      </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {quotes.map((quote) => (
+                    {filteredAndSortedQuotes.map((quote) => (
                       <tr key={quote.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-bold text-blue-600">{quote.quoteReference}</div>
@@ -280,7 +644,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
 
               {/* Version Mobile */}
               <div className="md:hidden divide-y divide-gray-200">
-                {quotes.map((quote) => (
+                {filteredAndSortedQuotes.map((quote) => (
                   <div key={quote.id} className="p-4 hover:bg-gray-50">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
