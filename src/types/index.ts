@@ -387,6 +387,7 @@ export interface Quote {
   estimatedDelay: string | null;
   status: QuoteStatus;
   osNumber?: string | null;
+  commercial: string | null;
   subtotalHt: number;
   discountPercent: number;
   discountAmount: number;

@@ -22,8 +22,7 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const userName = profile?.username || 'Commercial';
-      await downloadQuotePDF(quote, userName);
+      await downloadQuotePDF(quote);
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
       alert('Erreur lors de la génération du PDF');

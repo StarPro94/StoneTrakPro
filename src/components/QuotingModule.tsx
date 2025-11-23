@@ -51,6 +51,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
       estimatedDelay: '1 mois',
       status: 'draft',
       osNumber: null,
+      commercial: null,
       subtotalHt: 0,
       discountPercent: 0,
       discountAmount: 0,

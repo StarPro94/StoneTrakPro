@@ -146,7 +146,7 @@ function addHeader(doc: jsPDF, logoBase64: string | null) {
   return 40;
 }
 
-function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string) {
+function addQuoteInfoBox(doc: jsPDF, quote: Quote) {
   const margin = 10;
   let yPos = 10;
 
@@ -160,7 +160,7 @@ function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string) {
   yPos += 4;
   doc.text(`PAGE      1/2`, margin, yPos);
   yPos += 4;
-  doc.text(`Par       ${userName}`, margin, yPos);
+  doc.text(`Par       ${quote.commercial || 'Non renseigné'}`, margin, yPos);
 }
 
 function addReferencesBox(doc: jsPDF, quote: Quote, startY: number) {
@@ -485,7 +485,7 @@ function addCGVFooter(doc: jsPDF) {
   doc.text(COMPANY_INFO.legal, pageWidth / 2, yPos + 7, { align: 'center' });
 }
 
-export async function generateQuotePDF(quote: Quote, userName: string): Promise<Blob> {
+export async function generateQuotePDF(quote: Quote): Promise<Blob> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -494,7 +494,7 @@ export async function generateQuotePDF(quote: Quote, userName: string): Promise<
 
   const logoBase64 = await loadLogoAsBase64(COMPANY_INFO.logoPath);
 
-  addQuoteInfoBox(doc, quote, userName);
+  addQuoteInfoBox(doc, quote);
 
   let yPos = addHeader(doc, logoBase64);
 
@@ -512,8 +512,8 @@ export async function generateQuotePDF(quote: Quote, userName: string): Promise<
   return doc.output('blob');
 }
 
-export function downloadQuotePDF(quote: Quote, userName: string) {
-  generateQuotePDF(quote, userName).then(blob => {
+export function downloadQuotePDF(quote: Quote) {
+  generateQuotePDF(quote).then(blob => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

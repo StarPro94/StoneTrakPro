@@ -28,6 +28,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   const [siteName, setSiteName] = useState('');
   const [quoteDate, setQuoteDate] = useState('');
   const [estimatedDelay, setEstimatedDelay] = useState('');
+  const [commercial, setCommercial] = useState('');
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'>('draft');
   const [discountPercent, setDiscountPercent] = useState(0);
   const [tvaPercent, setTvaPercent] = useState(20);
@@ -56,6 +57,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       setSiteName(quote.siteName || '');
       setQuoteDate(new Date(quote.quoteDate).toISOString().split('T')[0]);
       setEstimatedDelay(quote.estimatedDelay || '');
+      setCommercial(quote.commercial || '');
       setStatus(quote.status);
       setOsNumber(quote.osNumber || '');
       setDiscountPercent(quote.discountPercent);
@@ -250,6 +252,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         siteName: siteName || null,
         quoteDate: new Date(quoteDate),
         estimatedDelay: estimatedDelay || null,
+        commercial: commercial || null,
         status,
         osNumber: status === 'accepted' ? osNumber : null,
         discountPercent,
@@ -461,6 +464,20 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                       value={estimatedDelay}
                       onChange={(e) => setEstimatedDelay(e.target.value)}
                       placeholder="Ex: 2 semaines"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <User className="h-4 w-4 inline mr-1" />
+                      Commercial
+                    </label>
+                    <input
+                      type="text"
+                      value={commercial}
+                      onChange={(e) => setCommercial(e.target.value)}
+                      placeholder="Nom du commercial"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
