@@ -32,12 +32,12 @@ export function calculateFromBlock(
   const surfaceObtainedFromM3 = 1 / thicknessM;
   calculations.push(`Surface obtenue depuis 1m³: ${surfaceObtainedFromM3.toFixed(2)} m²`);
 
-  // 3. Calculer le prix des tranches au m² (bloc + sciage)
-  const blockWithSawingM3 = blockPriceM3 + sawingCostM3;
-  calculations.push(`Prix bloc avec sciage: ${blockPriceM3.toFixed(2)}€/m³ + ${sawingCostM3.toFixed(2)}€/m³ (sciage) = ${blockWithSawingM3.toFixed(2)}€/m³`);
+  // 3. Calculer le prix des tranches au m² : (prix bloc × coût sciage) / nombre de tranches
+  const blockWithSawingM3 = blockPriceM3 * sawingCostM3;
+  calculations.push(`Prix bloc avec sciage: ${blockPriceM3.toFixed(2)}€/m³ × ${sawingCostM3.toFixed(2)}€/m³ (sciage) = ${blockWithSawingM3.toFixed(2)}€/m³`);
 
-  const slabPriceM2 = blockWithSawingM3 / surfaceObtainedFromM3;
-  calculations.push(`Prix des tranches au m²: ${blockWithSawingM3.toFixed(2)}€/m³ ÷ ${surfaceObtainedFromM3.toFixed(2)}m² = ${slabPriceM2.toFixed(2)}€/m²`);
+  const slabPriceM2 = blockWithSawingM3 / numberOfSlabs;
+  calculations.push(`Prix des tranches au m²: ${blockWithSawingM3.toFixed(2)}€/m³ ÷ ${numberOfSlabs} tranches = ${slabPriceM2.toFixed(2)}€/m²`);
 
   // 4. Ajouter le coût du débit
   const baseCostM2 = slabPriceM2 + cuttingCostM2;
