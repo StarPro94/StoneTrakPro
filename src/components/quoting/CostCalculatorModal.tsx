@@ -162,13 +162,15 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       unit,
       thickness: activeTab !== 'manual' ? thickness : undefined,
       blockPriceM3: activeTab === 'block' ? blockPriceM3 : undefined,
-      sawingCostM2: activeTab === 'block' ? sawingCostM2 : undefined,
+      sawingCostM3: activeTab === 'block' ? sawingCostM3 : undefined,
+      cuttingCostM2: activeTab === 'block' ? cuttingCostM2 : undefined,
       slabPriceM2: activeTab === 'slab' ? slabPriceM2 : undefined,
       fabricationCost: activeTab === 'slab' ? fabricationCost : undefined,
       wasteFactor,
       marginCoefficient,
       laborCost,
       consumablesCost,
+      overheadCoefficient,
       manualPrice: activeTab === 'manual' ? manualPrice : undefined
     };
 
