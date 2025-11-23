@@ -15,12 +15,14 @@ export function useUserProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (silent = false) => {
     if (!user) {
       setProfile(null);
       setLoading(false);
+      setIsInitialLoad(false);
       setError(null);
       return;
     }
@@ -28,12 +30,16 @@ export function useUserProfile() {
     if (!isSupabaseConfigured()) {
       setProfile(null);
       setLoading(false);
+      setIsInitialLoad(false);
       setError('Configuration Supabase manquante');
       return;
     }
 
     try {
-      setLoading(true);
+      // Ne mettre loading qu'au chargement initial ou si explicitement demandé
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const { data: profileData, error: profileError } = await supabase!
@@ -83,6 +89,7 @@ export function useUserProfile() {
       console.error('Erreur lors du chargement du profil:', err);
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
@@ -106,8 +113,8 @@ export function useUserProfile() {
 
       if (updateError) throw updateError;
 
-      // Recharger le profil après la mise à jour
-      await fetchProfile();
+      // Recharger le profil après la mise à jour (silencieusement)
+      await fetchProfile(true);
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur lors de la mise à jour du profil:', err);
@@ -117,7 +124,7 @@ export function useUserProfile() {
   useEffect(() => {
     fetchProfile();
 
-    if (user) {
+    if (user?.id) {
       // Écouter les changements sur le profil
       const profileSubscription = supabase!
         .channel('profile_changes')
@@ -131,7 +138,22 @@ export function useUserProfile() {
           },
           async (payload) => {
             console.log('Changement détecté sur le profil:', payload);
-            await fetchProfile();
+
+            // Mise à jour directe du state au lieu de recharger complètement
+            if (payload.eventType === 'UPDATE' && payload.new) {
+              const updated = payload.new as any;
+              setProfile({
+                id: updated.id,
+                username: updated.username,
+                role: updated.role,
+                machineId: updated.machine_id,
+                createdAt: new Date(updated.created_at),
+                updatedAt: new Date(updated.updated_at)
+              });
+            } else {
+              // Pour les autres événements, recharger silencieusement
+              await fetchProfile(true);
+            }
           }
         )
         .subscribe();
@@ -140,11 +162,12 @@ export function useUserProfile() {
         profileSubscription.unsubscribe();
       };
     }
-  }, [user]);
+  }, [user?.id]);
 
   return {
     profile,
     loading,
+    isInitialLoad,
     error,
     updateProfile,
     refetch: fetchProfile,

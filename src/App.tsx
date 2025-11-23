@@ -24,6 +24,7 @@ function App() {
   const {
     profile,
     loading: profileLoading,
+    isInitialLoad,
     isAdmin,
     isBureau,
     isAtelier,
@@ -138,8 +139,8 @@ function App() {
     setSheetToDelete(null);
   };
 
-  // Affichage du loader pendant la vérification d'authentification
-  if (authLoading || profileLoading) {
+  // Affichage du loader uniquement pendant le chargement initial
+  if (authLoading || isInitialLoad) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
