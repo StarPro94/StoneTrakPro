@@ -369,3 +369,108 @@ export interface Block {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Types pour le module de Chiffrage et Devis
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+export type CalculationMethod = 'block' | 'slab' | 'manual';
+
+export interface Quote {
+  id: string;
+  clientName: string;
+  projectName: string | null;
+  quoteDate: Date;
+  validityPeriod: string;
+  status: QuoteStatus;
+  subtotalHt: number;
+  discountPercent: number;
+  discountAmount: number;
+  totalHt: number;
+  tvaPercent: number;
+  totalTva: number;
+  totalTtc: number;
+  notes: string | null;
+  paymentConditions: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items?: QuoteItem[];
+}
+
+export interface QuoteItem {
+  id: string;
+  quoteId: string;
+  itemOrder: number;
+  description: string;
+  materialId: string | null;
+  materialName: string | null;
+  quantity: number;
+  unit: string;
+  thickness: number | null;
+  calculationMethod: CalculationMethod;
+  sourcePrice: number | null;
+  sawingCost: number | null;
+  wasteFactor: number;
+  marginCoefficient: number;
+  laborCost: number;
+  consumablesCost: number;
+  fabricationCost: number;
+  unitCostPrice: number | null;
+  unitSellingPrice: number;
+  totalPrice: number;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PricingParameters {
+  calculationMethod: CalculationMethod;
+  materialId?: string;
+  materialName?: string;
+  quantity: number;
+  unit: string;
+  thickness?: number;
+
+  // Pour calcul depuis bloc
+  blockPriceM3?: number;
+  sawingCostM2?: number;
+
+  // Pour calcul depuis tranche
+  slabPriceM2?: number;
+  fabricationCost?: number;
+
+  // Commun aux deux
+  wasteFactor: number;
+  marginCoefficient: number;
+  laborCost: number;
+  consumablesCost: number;
+
+  // Pour manuel
+  manualPrice?: number;
+}
+
+export interface PricingResult {
+  unitCostPrice: number;
+  unitSellingPrice: number;
+  totalPrice: number;
+  marginPercent: number;
+  marginAmount: number;
+  details: {
+    surfaceObtainedFromM3?: number;
+    numberOfSlabs?: number;
+    sawBladeThickness?: number;
+    calculations?: string[];
+  };
+}
+
+export interface QuoteStatistics {
+  totalQuotes: number;
+  draftQuotes: number;
+  sentQuotes: number;
+  acceptedQuotes: number;
+  rejectedQuotes: number;
+  expiredQuotes: number;
+  totalAmountHt: number;
+  totalAmountTtc: number;
+  averageAmount: number;
+  conversionRate: number;
+}

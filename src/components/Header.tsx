@@ -1,11 +1,11 @@
 import React from 'react';
-import { FileText, BarChart3, Bone as Stone, LogOut, User, Grid3X3, Calendar, Shield, Menu, X, LayoutDashboard, Package } from 'lucide-react';
+import { FileText, BarChart3, Bone as Stone, LogOut, User, Grid3X3, Calendar, Shield, Menu, X, LayoutDashboard, Package, Calculator } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { UserProfile } from '../hooks/useUserProfile';
 
 interface HeaderProps {
-  activeTab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin';
-  onTabChange: (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin') => void;
+  activeTab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin';
+  onTabChange: (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin') => void;
   profile: UserProfile | null;
   profileLoading: boolean;
   isAdmin: boolean;
@@ -21,6 +21,7 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
   const showReports = profile?.role === 'admin' || profile?.role === 'bureau';
   const showSlabs = true; // Tous les rôles
   const showPlanning = true; // Tous les rôles
+  const showQuotes = profile?.role === 'admin' || profile?.role === 'bureau';
   const showScaffolding = profile?.role === 'admin' || profile?.role === 'bureau';
   const showAdminTab = profile?.role === 'admin';
 
@@ -28,7 +29,7 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
     await signOut();
   };
 
-  const handleTabChange = (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin') => {
+  const handleTabChange = (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin') => {
     onTabChange(tab);
     setIsMobileMenuOpen(false);
   };
@@ -123,6 +124,20 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
                 >
                   <Calendar className="h-4 w-4" />
                   <span>Planning</span>
+                </button>
+              )}
+
+              {showQuotes && (
+                <button
+                  onClick={() => handleTabChange('quotes')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                    activeTab === 'quotes'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-gray-300 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Calculator className="h-4 w-4" />
+                  <span>Devis</span>
                 </button>
               )}
 
@@ -285,6 +300,20 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
                   >
                     <Calendar className="h-5 w-5" />
                     <span>Planning</span>
+                  </button>
+                )}
+
+                {showQuotes && (
+                  <button
+                    onClick={() => handleTabChange('quotes')}
+                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-3 ${
+                      activeTab === 'quotes'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'text-gray-300 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <Calculator className="h-5 w-5" />
+                    <span>Devis</span>
                   </button>
                 )}
 

@@ -8,6 +8,7 @@ import SlabPark from './components/SlabPark';
 import Planning from './components/Planning';
 import AdminPanel from './components/AdminPanel';
 import ScaffoldingModule from './components/ScaffoldingModule';
+import QuotingModule from './components/QuotingModule';
 import AuthForm from './components/AuthForm';
 import LoadingSpinner from './components/LoadingSpinner';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -40,16 +41,17 @@ function App() {
     canAddSlabs,
     canManageMachines,
     canEditPlanning,
-    canEditOwnMachinePlanning
+    canEditOwnMachinePlanning,
+    canAccessQuotes
   } = useUserProfile();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin'>('dashboard');
   const [selectedSheet, setSelectedSheet] = useState<DebitSheet | null>(null);
   const [authRefreshKey, setAuthRefreshKey] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
 
   // Déterminer le premier onglet accessible pour l'utilisateur
-  const getFirstAccessibleTab = (): 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin' => {
+  const getFirstAccessibleTab = (): 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin' => {
     if (canAccessDashboard) return 'dashboard';
     // Tracking est accessible à tous
     if (true) return 'tracking';
@@ -58,6 +60,7 @@ function App() {
     if (true) return 'planning';
     // Slabs est accessible à tous
     if (true) return 'slabs';
+    if (canAccessQuotes) return 'quotes';
     if (canAccessScaffolding) return 'scaffolding';
     if (canAccessAdmin) return 'admin';
     return 'tracking'; // Fallback par défaut
@@ -97,7 +100,7 @@ function App() {
     setSelectedSheet(null);
   };
 
-  const handleTabChange = (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'scaffolding' | 'admin') => {
+  const handleTabChange = (tab: 'dashboard' | 'tracking' | 'reports' | 'slabs' | 'planning' | 'quotes' | 'scaffolding' | 'admin') => {
     setActiveTab(tab);
     setSelectedSheet(null);
   };
@@ -264,6 +267,22 @@ function App() {
             onViewSheet={handleViewSheet}
             onUpdateSheet={updateSheet}
           />
+        ) : activeTab === 'quotes' && canAccessQuotes ? (
+          <QuotingModule
+            profileLoading={profileLoading}
+            profile={profile}
+            isAdmin={isAdmin}
+            isBureau={isBureau}
+          />
+        ) : activeTab === 'quotes' && !canAccessQuotes ? (
+          <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                <h2 className="text-xl font-semibold text-red-800 mb-2">Accès Refusé</h2>
+                <p className="text-red-600">Vous n'avez pas accès au module Devis.</p>
+              </div>
+            </div>
+          </div>
         ) : activeTab === 'scaffolding' && canAccessScaffolding ? (
           <ScaffoldingModule
             profileLoading={profileLoading}

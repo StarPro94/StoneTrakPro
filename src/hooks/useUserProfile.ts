@@ -196,6 +196,14 @@ export function useUserProfile() {
 
     // Administration: Admin uniquement
     canManageUsers: profile?.role === 'admin',
-    canAccessAdmin: profile?.role === 'admin'
+    canAccessAdmin: profile?.role === 'admin',
+
+    // Devis/Chiffrage: Admin et Bureau uniquement
+    canAccessQuotes: profile?.role === 'admin' || profile?.role === 'bureau',
+    canCreateQuotes: profile?.role === 'admin' || profile?.role === 'bureau',
+    canEditQuotes: profile?.role === 'admin' || profile?.role === 'bureau',
+    canDeleteQuotes: profile?.role === 'admin',
+    canViewAllQuotes: profile?.role === 'admin' || profile?.role === 'bureau',
+    canViewQuotePricing: profile?.role === 'admin' || profile?.role === 'bureau'
   };
 }
