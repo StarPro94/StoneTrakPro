@@ -135,7 +135,7 @@ export function useQuotes() {
     }
   };
 
-  const createQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>): Promise<string | null> => {
+  const createQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>): Promise<Quote | null> => {
     if (!user || !isSupabaseConfigured()) {
       setError('Utilisateur non authentifié ou configuration manquante');
       return null;
@@ -168,8 +168,31 @@ export function useQuotes() {
 
       if (insertError) throw insertError;
 
+      // Mapper le devis créé
+      const newQuote: Quote = {
+        id: data.id,
+        clientName: data.client_name,
+        projectName: data.project_name,
+        quoteDate: new Date(data.quote_date),
+        validityPeriod: data.validity_period,
+        status: data.status as QuoteStatus,
+        subtotalHt: Number(data.subtotal_ht),
+        discountPercent: Number(data.discount_percent),
+        discountAmount: Number(data.discount_amount),
+        totalHt: Number(data.total_ht),
+        tvaPercent: Number(data.tva_percent),
+        totalTva: Number(data.total_tva),
+        totalTtc: Number(data.total_ttc),
+        notes: data.notes,
+        paymentConditions: data.payment_conditions,
+        createdBy: data.created_by,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        items: []
+      };
+
       await fetchQuotes();
-      return data.id;
+      return newQuote;
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur lors de la création du devis:', err);
@@ -438,27 +461,27 @@ export function useQuotes() {
       if (!originalQuote) throw new Error('Devis introuvable');
 
       // Créer un nouveau devis
-      const newQuoteId = await createQuote({
+      const newQuote = await createQuote({
         ...originalQuote,
         clientName: originalQuote.clientName + ' (Copie)',
         status: 'draft',
         quoteDate: new Date()
       });
 
-      if (!newQuoteId) throw new Error('Erreur lors de la duplication');
+      if (!newQuote) throw new Error('Erreur lors de la duplication');
 
       // Copier les items
       if (originalQuote.items && originalQuote.items.length > 0) {
         for (const item of originalQuote.items) {
           await addQuoteItem({
             ...item,
-            quoteId: newQuoteId
+            quoteId: newQuote.id
           });
         }
       }
 
       await fetchQuotes();
-      return newQuoteId;
+      return newQuote.id;
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur lors de la duplication:', err);
