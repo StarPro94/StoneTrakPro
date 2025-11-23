@@ -9,7 +9,7 @@ const COMPANY_INFO = {
   phone: 'Tél: 01 XX XX XX XX',
   email: 'Email: contact@dbpm.fr',
   rib: 'FR76 XXXX XXXX XXXX XXXX XXXX XXX',
-  logoPath: '/DBPM_logo_bleu-e1527158485928.png'
+  logoPath: '/Image1 copy.png'
 };
 
 const CGV_TEXT = `INTRODUCTION
@@ -94,7 +94,7 @@ function addHeader(doc: jsPDF, quote: Quote, userName: string, logoBase64: strin
 
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', margin, yPos, 40, 20);
+      doc.addImage(logoBase64, 'PNG', margin, yPos, 70, 15);
     } catch (error) {
       console.error('Erreur lors de l\'ajout du logo:', error);
     }
