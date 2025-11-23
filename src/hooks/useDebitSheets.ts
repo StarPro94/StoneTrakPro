@@ -301,8 +301,10 @@ export function useDebitSheets() {
         if (itemsError) throw itemsError;
       }
 
-      // Le Realtime va automatiquement ajouter la nouvelle feuille
-      console.log('Attente de la mise à jour Realtime automatique...');
+      // Forcer un rechargement pour s'assurer que les données sont à jour
+      console.log('Rechargement des feuilles après ajout...');
+      await fetchSheets();
+      console.log('Rechargement terminé après ajout');
 
     } catch (err: any) {
       setError(err.message);
@@ -394,10 +396,6 @@ export function useDebitSheets() {
 
       console.log('Import Excel réussi, sheet_id:', result.sheet_id);
 
-      // Attendre un peu pour laisser Supabase propager les changements
-      console.log('Attente de 1 seconde pour la propagation des données...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       // Forcer un rechargement pour s'assurer que les données sont à jour
       console.log('Rechargement des feuilles après import Excel...');
       await fetchSheets();
@@ -469,10 +467,6 @@ export function useDebitSheets() {
       }
 
       console.log('Import PDF réussi, sheet_id:', result.sheet_id);
-
-      // Attendre un peu pour laisser Supabase propager les changements
-      console.log('Attente de 1 seconde pour la propagation des données...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Forcer un rechargement pour s'assurer que les données sont à jour
       console.log('Rechargement des feuilles après import PDF...');
