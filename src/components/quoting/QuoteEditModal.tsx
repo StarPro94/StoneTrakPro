@@ -34,6 +34,9 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   const [showPalletsModal, setShowPalletsModal] = useState(false);
   const [palletsQuantity, setPalletsQuantity] = useState(1);
   const [palletPrice, setPalletPrice] = useState(15);
+  const [showOsNumberModal, setShowOsNumberModal] = useState(false);
+  const [osNumber, setOsNumber] = useState('');
+  const [pendingStatus, setPendingStatus] = useState<'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'>('draft');
 
   // Charger les données du devis
   useEffect(() => {
@@ -43,6 +46,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       setQuoteDate(new Date(quote.quoteDate).toISOString().split('T')[0]);
       setValidityPeriod(quote.validityPeriod);
       setStatus(quote.status);
+      setOsNumber(quote.osNumber || '');
       setDiscountPercent(quote.discountPercent);
       setTvaPercent(quote.tvaPercent);
       setNotes(quote.notes || '');
@@ -157,8 +161,33 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
     setPalletPrice(15);
   };
 
+  const handleStatusChange = (newStatus: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired') => {
+    if (newStatus === 'accepted' && status !== 'accepted') {
+      // Si on passe en accepté, demander le numéro d'OS
+      setPendingStatus(newStatus);
+      setShowOsNumberModal(true);
+    } else {
+      setStatus(newStatus);
+    }
+  };
+
+  const handleOsNumberSubmit = () => {
+    if (!osNumber.trim()) {
+      alert('Le numéro d\'OS est obligatoire pour accepter un devis');
+      return;
+    }
+    setStatus(pendingStatus);
+    setShowOsNumberModal(false);
+  };
+
   const handleSave = async () => {
     if (!quote) return;
+
+    // Vérifier que le numéro d'OS est renseigné si le statut est accepté
+    if (status === 'accepted' && !osNumber.trim()) {
+      alert('Le numéro d\'OS est obligatoire pour un devis accepté');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -170,6 +199,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         quoteDate: new Date(quoteDate),
         validityPeriod,
         status,
+        osNumber: status === 'accepted' ? osNumber : null,
         discountPercent,
         tvaPercent,
         notes: notes || null,
@@ -295,7 +325,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                     <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                     <select
                       value={status}
-                      onChange={(e) => setStatus(e.target.value as any)}
+                      onChange={(e) => handleStatusChange(e.target.value as any)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="draft">Brouillon</option>
@@ -605,6 +635,70 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
                 Ajouter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal numéro d'OS */}
+      {showOsNumberModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
+              <div className="flex items-center space-x-3">
+                <FileText className="h-6 w-6" />
+                <h3 className="text-lg font-bold">Numéro d'Ordre de Service</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowOsNumberModal(false);
+                  setOsNumber('');
+                }}
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  Le devis va être marqué comme <strong>Accepté</strong>. Vous devez obligatoirement renseigner un numéro d'Ordre de Service (OS).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Numéro d'OS *
+                </label>
+                <input
+                  type="text"
+                  value={osNumber}
+                  onChange={(e) => setOsNumber(e.target.value)}
+                  placeholder="Ex: OS2025-001"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 p-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowOsNumberModal(false);
+                  setOsNumber('');
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleOsNumberSubmit}
+                disabled={!osNumber.trim()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                Valider
               </button>
             </div>
           </div>

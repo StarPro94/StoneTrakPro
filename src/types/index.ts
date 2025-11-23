@@ -381,6 +381,7 @@ export interface Quote {
   quoteDate: Date;
   validityPeriod: string;
   status: QuoteStatus;
+  osNumber?: string | null;
   subtotalHt: number;
   discountPercent: number;
   discountAmount: number;
