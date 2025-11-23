@@ -8,9 +8,10 @@ interface QuoteViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   canEdit: boolean;
+  onEdit: () => void;
 }
 
-export default function QuoteViewModal({ quote, isOpen, onClose, canEdit }: QuoteViewModalProps) {
+export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit }: QuoteViewModalProps) {
   if (!isOpen || !quote) return null;
 
   const getStatusBadge = (status: QuoteStatus) => {
@@ -229,6 +230,7 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit }: Quot
             </button>
             {canEdit && quote.status === 'draft' && (
               <button
+                onClick={onEdit}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center space-x-2"
               >
                 <Edit2 className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { Quote, QuoteStatus, PricingParameters, PricingResult, QuoteItem } from 
 import { UserProfile } from '../hooks/useUserProfile';
 import CostCalculatorModal from './quoting/CostCalculatorModal';
 import QuoteViewModal from './quoting/QuoteViewModal';
+import QuoteEditModal from './quoting/QuoteEditModal';
 import { formatPrice } from '../utils/pricingCalculations';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -20,6 +21,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const canCreateQuotes = isAdmin || isBureau;
   const canViewPricing = isAdmin || isBureau;
@@ -331,6 +333,24 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
           setSelectedQuote(null);
         }}
         canEdit={canCreateQuotes}
+        onEdit={() => {
+          setShowViewModal(false);
+          setShowEditModal(true);
+        }}
+      />
+
+      {/* Modal édition devis */}
+      <QuoteEditModal
+        quote={selectedQuote}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedQuote(null);
+        }}
+        onSaved={() => {
+          setShowEditModal(false);
+          setSelectedQuote(null);
+        }}
       />
     </div>
   );
