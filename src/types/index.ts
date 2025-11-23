@@ -376,10 +376,14 @@ export type CalculationMethod = 'block' | 'slab' | 'manual';
 
 export interface Quote {
   id: string;
-  clientName: string;
-  projectName: string | null;
+  clientCompany: string;
+  clientContactName: string | null;
+  clientAddress: string | null;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  siteName: string | null;
   quoteDate: Date;
-  validityPeriod: string;
+  estimatedDelay: string | null;
   status: QuoteStatus;
   osNumber?: string | null;
   subtotalHt: number;
@@ -390,7 +394,6 @@ export interface Quote {
   totalTva: number;
   totalTtc: number;
   notes: string | null;
-  paymentConditions: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;

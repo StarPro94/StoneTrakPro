@@ -33,11 +33,16 @@ export function useQuotes() {
 
       const mappedQuotes: Quote[] = (data || []).map((q: any) => ({
         id: q.id,
-        clientName: q.client_name,
-        projectName: q.project_name,
+        clientCompany: q.client_company,
+        clientContactName: q.client_contact_name,
+        clientAddress: q.client_address,
+        clientPhone: q.client_phone,
+        clientEmail: q.client_email,
+        siteName: q.site_name,
         quoteDate: new Date(q.quote_date),
-        validityPeriod: q.validity_period,
+        estimatedDelay: q.estimated_delay,
         status: q.status as QuoteStatus,
+        osNumber: q.os_number,
         subtotalHt: Number(q.subtotal_ht),
         discountPercent: Number(q.discount_percent),
         discountAmount: Number(q.discount_amount),
@@ -46,7 +51,6 @@ export function useQuotes() {
         totalTva: Number(q.total_tva),
         totalTtc: Number(q.total_ttc),
         notes: q.notes,
-        paymentConditions: q.payment_conditions,
         createdBy: q.created_by,
         createdAt: new Date(q.created_at),
         updatedAt: new Date(q.updated_at),
@@ -109,11 +113,16 @@ export function useQuotes() {
 
       return {
         id: data.id,
-        clientName: data.client_name,
-        projectName: data.project_name,
+        clientCompany: data.client_company,
+        clientContactName: data.client_contact_name,
+        clientAddress: data.client_address,
+        clientPhone: data.client_phone,
+        clientEmail: data.client_email,
+        siteName: data.site_name,
         quoteDate: new Date(data.quote_date),
-        validityPeriod: data.validity_period,
+        estimatedDelay: data.estimated_delay,
         status: data.status as QuoteStatus,
+        osNumber: data.os_number,
         subtotalHt: Number(data.subtotal_ht),
         discountPercent: Number(data.discount_percent),
         discountAmount: Number(data.discount_amount),
@@ -122,7 +131,6 @@ export function useQuotes() {
         totalTva: Number(data.total_tva),
         totalTtc: Number(data.total_ttc),
         notes: data.notes,
-        paymentConditions: data.payment_conditions,
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
@@ -147,11 +155,16 @@ export function useQuotes() {
       const { data, error: insertError } = await supabase!
         .from('quotes')
         .insert({
-          client_name: quote.clientName,
-          project_name: quote.projectName,
+          client_company: quote.clientCompany,
+          client_contact_name: quote.clientContactName,
+          client_address: quote.clientAddress,
+          client_phone: quote.clientPhone,
+          client_email: quote.clientEmail,
+          site_name: quote.siteName,
           quote_date: quote.quoteDate.toISOString().split('T')[0],
-          validity_period: quote.validityPeriod,
+          estimated_delay: quote.estimatedDelay,
           status: quote.status,
+          os_number: quote.osNumber,
           subtotal_ht: quote.subtotalHt,
           discount_percent: quote.discountPercent,
           discount_amount: quote.discountAmount,
@@ -160,7 +173,6 @@ export function useQuotes() {
           total_tva: quote.totalTva,
           total_ttc: quote.totalTtc,
           notes: quote.notes,
-          payment_conditions: quote.paymentConditions,
           created_by: user.id
         })
         .select()
@@ -171,11 +183,16 @@ export function useQuotes() {
       // Mapper le devis créé
       const newQuote: Quote = {
         id: data.id,
-        clientName: data.client_name,
-        projectName: data.project_name,
+        clientCompany: data.client_company,
+        clientContactName: data.client_contact_name,
+        clientAddress: data.client_address,
+        clientPhone: data.client_phone,
+        clientEmail: data.client_email,
+        siteName: data.site_name,
         quoteDate: new Date(data.quote_date),
-        validityPeriod: data.validity_period,
+        estimatedDelay: data.estimated_delay,
         status: data.status as QuoteStatus,
+        osNumber: data.os_number,
         subtotalHt: Number(data.subtotal_ht),
         discountPercent: Number(data.discount_percent),
         discountAmount: Number(data.discount_amount),
@@ -184,7 +201,6 @@ export function useQuotes() {
         totalTva: Number(data.total_tva),
         totalTtc: Number(data.total_ttc),
         notes: data.notes,
-        paymentConditions: data.payment_conditions,
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
@@ -212,11 +228,16 @@ export function useQuotes() {
       const { error: updateError } = await supabase!
         .from('quotes')
         .update({
-          client_name: quote.clientName,
-          project_name: quote.projectName,
+          client_company: quote.clientCompany,
+          client_contact_name: quote.clientContactName,
+          client_address: quote.clientAddress,
+          client_phone: quote.clientPhone,
+          client_email: quote.clientEmail,
+          site_name: quote.siteName,
           quote_date: quote.quoteDate.toISOString().split('T')[0],
-          validity_period: quote.validityPeriod,
+          estimated_delay: quote.estimatedDelay,
           status: quote.status,
+          os_number: quote.osNumber,
           subtotal_ht: quote.subtotalHt,
           discount_percent: quote.discountPercent,
           discount_amount: quote.discountAmount,
@@ -224,8 +245,7 @@ export function useQuotes() {
           tva_percent: quote.tvaPercent,
           total_tva: quote.totalTva,
           total_ttc: quote.totalTtc,
-          notes: quote.notes,
-          payment_conditions: quote.paymentConditions
+          notes: quote.notes
         })
         .eq('id', quote.id);
 
@@ -463,7 +483,7 @@ export function useQuotes() {
       // Créer un nouveau devis
       const newQuote = await createQuote({
         ...originalQuote,
-        clientName: originalQuote.clientName + ' (Copie)',
+        clientCompany: originalQuote.clientCompany + ' (Copie)',
         status: 'draft',
         quoteDate: new Date()
       });

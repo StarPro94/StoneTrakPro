@@ -16,15 +16,18 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem } = useQuotes();
 
   // États du formulaire
-  const [clientName, setClientName] = useState('');
-  const [projectName, setProjectName] = useState('');
+  const [clientCompany, setClientCompany] = useState('');
+  const [clientContactName, setClientContactName] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [siteName, setSiteName] = useState('');
   const [quoteDate, setQuoteDate] = useState('');
-  const [validityPeriod, setValidityPeriod] = useState('1 mois');
+  const [estimatedDelay, setEstimatedDelay] = useState('');
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'>('draft');
   const [discountPercent, setDiscountPercent] = useState(0);
   const [tvaPercent, setTvaPercent] = useState(20);
   const [notes, setNotes] = useState('');
-  const [paymentConditions, setPaymentConditions] = useState('Paiement à 30 jours');
   const [items, setItems] = useState<QuoteItem[]>([]);
 
   const [showCalculator, setShowCalculator] = useState(false);
@@ -41,16 +44,19 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   // Charger les données du devis
   useEffect(() => {
     if (quote && isOpen) {
-      setClientName(quote.clientName);
-      setProjectName(quote.projectName || '');
+      setClientCompany(quote.clientCompany);
+      setClientContactName(quote.clientContactName || '');
+      setClientAddress(quote.clientAddress || '');
+      setClientPhone(quote.clientPhone || '');
+      setClientEmail(quote.clientEmail || '');
+      setSiteName(quote.siteName || '');
       setQuoteDate(new Date(quote.quoteDate).toISOString().split('T')[0]);
-      setValidityPeriod(quote.validityPeriod);
+      setEstimatedDelay(quote.estimatedDelay || '');
       setStatus(quote.status);
       setOsNumber(quote.osNumber || '');
       setDiscountPercent(quote.discountPercent);
       setTvaPercent(quote.tvaPercent);
       setNotes(quote.notes || '');
-      setPaymentConditions(quote.paymentConditions);
       setItems(quote.items || []);
     }
   }, [quote, isOpen]);
@@ -194,16 +200,19 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       // Mettre à jour le devis principal
       const updatedQuote: Quote = {
         ...quote,
-        clientName,
-        projectName: projectName || null,
+        clientCompany,
+        clientContactName: clientContactName || null,
+        clientAddress: clientAddress || null,
+        clientPhone: clientPhone || null,
+        clientEmail: clientEmail || null,
+        siteName: siteName || null,
         quoteDate: new Date(quoteDate),
-        validityPeriod,
+        estimatedDelay: estimatedDelay || null,
         status,
         osNumber: status === 'accepted' ? osNumber : null,
         discountPercent,
         tvaPercent,
         notes: notes || null,
-        paymentConditions,
         subtotalHt: totals.subtotalHt,
         discountAmount: totals.discountAmount,
         totalHt: totals.totalHt,
@@ -272,13 +281,13 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <User className="h-4 w-4 inline mr-1" />
-                      Client *
+                      Client (entreprise) *
                     </label>
                     <input
                       type="text"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
+                      value={clientCompany}
+                      onChange={(e) => setClientCompany(e.target.value)}
+                      placeholder="Nom de l'entreprise"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
@@ -286,13 +295,52 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <Package className="h-4 w-4 inline mr-1" />
-                      Projet
+                      Nom du client
                     </label>
                     <input
                       type="text"
-                      value={projectName}
-                      onChange={(e) => setProjectName(e.target.value)}
+                      value={clientContactName}
+                      onChange={(e) => setClientContactName(e.target.value)}
+                      placeholder="Nom de la personne"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Adresse du client
+                    </label>
+                    <input
+                      type="text"
+                      value={clientAddress}
+                      onChange={(e) => setClientAddress(e.target.value)}
+                      placeholder="Adresse complète"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Téléphone du client
+                    </label>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      placeholder="06 XX XX XX XX"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Adresse mail du client
+                    </label>
+                    <input
+                      type="email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                      placeholder="email@exemple.com"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -312,16 +360,6 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Validité</label>
-                    <input
-                      type="text"
-                      value={validityPeriod}
-                      onChange={(e) => setValidityPeriod(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                     <select
                       value={status}
@@ -337,11 +375,28 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Conditions de paiement</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <Package className="h-4 w-4 inline mr-1" />
+                      Chantier
+                    </label>
                     <input
                       type="text"
-                      value={paymentConditions}
-                      onChange={(e) => setPaymentConditions(e.target.value)}
+                      value={siteName}
+                      onChange={(e) => setSiteName(e.target.value)}
+                      placeholder="Nom du chantier"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Délai estimé (hors congés)
+                    </label>
+                    <input
+                      type="text"
+                      value={estimatedDelay}
+                      onChange={(e) => setEstimatedDelay(e.target.value)}
+                      placeholder="Ex: 2 semaines"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -537,7 +592,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !clientName}
+              disabled={saving || !clientCompany}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
             >
               <Save className="h-4 w-4" />
