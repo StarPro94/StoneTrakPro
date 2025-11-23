@@ -137,7 +137,10 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
                   }`}
                 >
                   <Calculator className="h-4 w-4" />
-                  <span>Devis</span>
+                  <span className="flex flex-col items-start">
+                    <span className="leading-tight">Devis</span>
+                    <span className="text-[10px] text-green-400 font-semibold leading-none">NEW</span>
+                  </span>
                 </button>
               )}
 
@@ -316,7 +319,10 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
                     }`}
                   >
                     <Calculator className="h-5 w-5" />
-                    <span>Devis</span>
+                    <span className="flex flex-col items-start">
+                      <span className="leading-tight">Devis</span>
+                      <span className="text-[10px] text-green-400 font-semibold leading-none">NEW</span>
+                    </span>
                   </button>
                 )}
 
