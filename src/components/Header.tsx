@@ -54,7 +54,7 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
             </div>
           </div>
 
-          <div className="flex items-center space-x-4 flex-1 justify-center">
+          <div className="flex items-center space-x-4 flex-1 justify-center ml-12">
             {/* Navigation de bureau - masquée sur mobile/tablette */}
             <nav className="hidden md:flex space-x-2">
               {showDashboard && (
