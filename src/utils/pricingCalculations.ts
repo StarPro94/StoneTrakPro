@@ -1,6 +1,6 @@
 import { PricingParameters, PricingResult } from '../types';
 
-const SAW_BLADE_THICKNESS_CM = 1; // Épaisseur de la lame de scie en cm
+const SAW_BLADE_THICKNESS_CM = 0.5; // Épaisseur de la lame de scie en cm (5mm)
 
 export function calculateFromBlock(
   blockPriceM3: number,
@@ -31,36 +31,37 @@ export function calculateFromBlock(
   const surfaceObtainedFromM3 = 1 / thicknessM;
   calculations.push(`Surface obtenue depuis 1m³: ${surfaceObtainedFromM3.toFixed(2)} m²`);
 
-  // 4. Calculer le coût du bloc par m²
+  // 3. Calculer le coût du bloc par m²
   const blockCostPerM2 = blockPriceM3 / surfaceObtainedFromM3;
   calculations.push(`Coût bloc au m²: ${blockPriceM3.toFixed(2)}€/m³ ÷ ${surfaceObtainedFromM3.toFixed(2)}m² = ${blockCostPerM2.toFixed(2)}€/m²`);
 
-  // 5. Ajouter le coût de sciage
+  // 4. Ajouter le coût du débit
   const baseCostM2 = blockCostPerM2 + sawingCostM2;
-  calculations.push(`Coût de base: ${blockCostPerM2.toFixed(2)}€ + ${sawingCostM2.toFixed(2)}€ (sciage) = ${baseCostM2.toFixed(2)}€/m²`);
+  calculations.push(`Avec coût débit: ${blockCostPerM2.toFixed(2)}€ + ${sawingCostM2.toFixed(2)}€ (débit) = ${baseCostM2.toFixed(2)}€/m²`);
 
-  // 6. Appliquer le coefficient de perte
+  // 5. Appliquer le coefficient de perte
   const costWithWaste = baseCostM2 * wasteFactor;
   calculations.push(`Avec perte (×${wasteFactor}): ${costWithWaste.toFixed(2)}€/m²`);
 
-  // 7. Ajouter les coûts additionnels
-  const unitCostPrice = costWithWaste + (laborCost + consumablesCost);
+  // 6. Ajouter les coûts additionnels (MO + consommables)
+  const costWithLabor = costWithWaste + laborCost + consumablesCost;
   if (laborCost > 0 || consumablesCost > 0) {
-    calculations.push(`Coût de revient: ${costWithWaste.toFixed(2)}€ + ${laborCost.toFixed(2)}€ (MO) + ${consumablesCost.toFixed(2)}€ (conso) = ${unitCostPrice.toFixed(2)}€/m²`);
-  } else {
-    calculations.push(`Coût de revient: ${unitCostPrice.toFixed(2)}€/m²`);
+    calculations.push(`Avec MO/conso: ${costWithWaste.toFixed(2)}€ + ${laborCost.toFixed(2)}€ (MO) + ${consumablesCost.toFixed(2)}€ (conso) = ${costWithLabor.toFixed(2)}€/m²`);
   }
 
-  // 8. Appliquer le coefficient de marge
-  const priceWithMargin = unitCostPrice * marginCoefficient;
-  calculations.push(`Prix de vente (×${marginCoefficient}): ${priceWithMargin.toFixed(2)}€/m²`);
-
-  // 9. Appliquer les frais généraux
-  const unitSellingPrice = priceWithMargin * overheadCoefficient;
+  // 7. Appliquer les frais généraux
+  const costWithOverhead = costWithLabor * overheadCoefficient;
   if (overheadCoefficient !== 1.0) {
     const overheadPercent = ((overheadCoefficient - 1) * 100).toFixed(0);
-    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${unitSellingPrice.toFixed(2)}€/m²`);
+    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${costWithOverhead.toFixed(2)}€/m²`);
   }
+
+  const unitCostPrice = costWithOverhead;
+  calculations.push(`Coût de revient total: ${unitCostPrice.toFixed(2)}€/m²`);
+
+  // 8. Appliquer le coefficient de marge
+  const unitSellingPrice = unitCostPrice * marginCoefficient;
+  calculations.push(`Prix de vente (×${marginCoefficient}): ${unitSellingPrice.toFixed(2)}€/m²`);
 
   const marginAmount = unitSellingPrice - unitCostPrice;
   const marginPercent = ((marginAmount / unitCostPrice) * 100);
@@ -99,30 +100,29 @@ export function calculateFromSlab(
   calculations.push(`Avec perte (×${wasteFactor}): ${priceWithWaste.toFixed(2)}€/m²`);
 
   // 3. Ajouter les coûts de transformation
-  const totalCosts = priceWithWaste + fabricationCost + laborCost + consumablesCost;
+  const costWithTransformation = priceWithWaste + fabricationCost + laborCost + consumablesCost;
   const costsDetails = [];
   if (fabricationCost > 0) costsDetails.push(`${fabricationCost.toFixed(2)}€ (façonnage)`);
   if (laborCost > 0) costsDetails.push(`${laborCost.toFixed(2)}€ (MO)`);
   if (consumablesCost > 0) costsDetails.push(`${consumablesCost.toFixed(2)}€ (conso)`);
 
   if (costsDetails.length > 0) {
-    calculations.push(`Coût de revient: ${priceWithWaste.toFixed(2)}€ + ${costsDetails.join(' + ')} = ${totalCosts.toFixed(2)}€/m²`);
-  } else {
-    calculations.push(`Coût de revient: ${totalCosts.toFixed(2)}€/m²`);
+    calculations.push(`Avec transformation: ${priceWithWaste.toFixed(2)}€ + ${costsDetails.join(' + ')} = ${costWithTransformation.toFixed(2)}€/m²`);
   }
 
-  const unitCostPrice = totalCosts;
-
-  // 4. Appliquer le coefficient de marge
-  const priceWithMargin = unitCostPrice * marginCoefficient;
-  calculations.push(`Prix de vente (×${marginCoefficient}): ${priceWithMargin.toFixed(2)}€/m²`);
-
-  // 5. Appliquer les frais généraux
-  const unitSellingPrice = priceWithMargin * overheadCoefficient;
+  // 4. Appliquer les frais généraux
+  const costWithOverhead = costWithTransformation * overheadCoefficient;
   if (overheadCoefficient !== 1.0) {
     const overheadPercent = ((overheadCoefficient - 1) * 100).toFixed(0);
-    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${unitSellingPrice.toFixed(2)}€/m²`);
+    calculations.push(`Avec frais généraux (+${overheadPercent}%): ${costWithOverhead.toFixed(2)}€/m²`);
   }
+
+  const unitCostPrice = costWithOverhead;
+  calculations.push(`Coût de revient total: ${unitCostPrice.toFixed(2)}€/m²`);
+
+  // 5. Appliquer le coefficient de marge
+  const unitSellingPrice = unitCostPrice * marginCoefficient;
+  calculations.push(`Prix de vente (×${marginCoefficient}): ${unitSellingPrice.toFixed(2)}€/m²`);
 
   const marginAmount = unitSellingPrice - unitCostPrice;
   const marginPercent = ((marginAmount / unitCostPrice) * 100);
