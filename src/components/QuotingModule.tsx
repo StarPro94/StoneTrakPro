@@ -40,11 +40,17 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
     if (!canCreateQuotes) return;
 
     const newQuote = await createQuote({
-      clientName: 'Nouveau Client',
-      projectName: 'Nouveau Projet',
+      quoteReference: '',
+      clientCompany: 'Nouveau Client',
+      clientContactName: null,
+      clientAddress: null,
+      clientPhone: null,
+      clientEmail: null,
+      siteName: 'Nouveau Chantier',
       quoteDate: new Date(),
-      validityPeriod: '1 mois',
+      estimatedDelay: '1 mois',
       status: 'draft',
+      osNumber: null,
       subtotalHt: 0,
       discountPercent: 0,
       discountAmount: 0,
@@ -52,8 +58,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
       tvaPercent: 20,
       totalTva: 0,
       totalTtc: 0,
-      notes: null,
-      paymentConditions: 'Paiement à 30 jours'
+      notes: null
     });
 
     if (newQuote) {
