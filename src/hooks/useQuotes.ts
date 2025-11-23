@@ -8,17 +8,22 @@ export function useQuotes() {
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuotes = async () => {
+  const fetchQuotes = async (silent = false) => {
     if (!isSupabaseConfigured() || !user) {
       setQuotes([]);
       setLoading(false);
+      setIsInitialLoad(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // Ne mettre loading qu'au chargement initial ou si explicitement demandé
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const { data, error: fetchError } = await supabase!
@@ -65,6 +70,7 @@ export function useQuotes() {
       console.error('Erreur lors du chargement des devis:', err);
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
@@ -212,7 +218,7 @@ export function useQuotes() {
         items: []
       };
 
-      await fetchQuotes();
+      await fetchQuotes(true);
       return newQuote;
     } catch (err: any) {
       setError(err.message);
@@ -257,7 +263,7 @@ export function useQuotes() {
 
       if (updateError) throw updateError;
 
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -282,7 +288,7 @@ export function useQuotes() {
 
       if (deleteError) throw deleteError;
 
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -329,7 +335,7 @@ export function useQuotes() {
 
       // Recalculer les totaux du devis
       await recalculateQuoteTotals(item.quoteId);
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -375,7 +381,7 @@ export function useQuotes() {
       if (updateError) throw updateError;
 
       await recalculateQuoteTotals(item.quoteId);
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -401,7 +407,7 @@ export function useQuotes() {
       if (deleteError) throw deleteError;
 
       await recalculateQuoteTotals(quoteId);
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -465,7 +471,7 @@ export function useQuotes() {
 
       if (updateError) throw updateError;
 
-      await fetchQuotes();
+      await fetchQuotes(true);
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -506,7 +512,7 @@ export function useQuotes() {
         }
       }
 
-      await fetchQuotes();
+      await fetchQuotes(true);
       return newQuote.id;
     } catch (err: any) {
       setError(err.message);
@@ -529,7 +535,7 @@ export function useQuotes() {
             table: 'quotes'
           },
           () => {
-            fetchQuotes();
+            fetchQuotes(true);
           }
         )
         .subscribe();
@@ -544,7 +550,7 @@ export function useQuotes() {
             table: 'quote_items'
           },
           () => {
-            fetchQuotes();
+            fetchQuotes(true);
           }
         )
         .subscribe();
@@ -554,11 +560,12 @@ export function useQuotes() {
         itemsChannel.unsubscribe();
       };
     }
-  }, [user]);
+  }, [user?.id]);
 
   return {
     quotes,
     loading,
+    isInitialLoad,
     error,
     fetchQuotes,
     fetchQuoteById,

@@ -21,7 +21,7 @@ type SortDirection = 'asc' | 'desc';
 type PeriodFilter = 'all' | 'week' | 'month' | 'year';
 
 export default function QuotingModule({ profileLoading, profile, isAdmin, isBureau }: QuotingModuleProps) {
-  const { quotes, loading, error, createQuote, updateQuoteStatus, deleteQuote } = useQuotes();
+  const { quotes, loading, isInitialLoad, error, createQuote, updateQuoteStatus, deleteQuote } = useQuotes();
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -258,8 +258,13 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
     );
   };
 
-  if (profileLoading || loading) {
-    return <LoadingSpinner />;
+  if (profileLoading || (loading && isInitialLoad)) {
+    return (
+      <LoadingSpinner
+        message="Chargement des devis..."
+        subtitle="Veuillez patienter"
+      />
+    );
   }
 
   if (error) {
