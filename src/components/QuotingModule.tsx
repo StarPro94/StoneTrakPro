@@ -4,6 +4,7 @@ import { useQuotes } from '../hooks/useQuotes';
 import { Quote, QuoteStatus, PricingParameters, PricingResult, QuoteItem } from '../types';
 import { UserProfile } from '../hooks/useUserProfile';
 import CostCalculatorModal from './quoting/CostCalculatorModal';
+import QuoteViewModal from './quoting/QuoteViewModal';
 import { formatPrice } from '../utils/pricingCalculations';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -18,6 +19,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
   const { quotes, loading, error, createQuote, updateQuoteStatus, deleteQuote } = useQuotes();
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const canCreateQuotes = isAdmin || isBureau;
   const canViewPricing = isAdmin || isBureau;
@@ -237,7 +239,10 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            onClick={() => setSelectedQuote(quote)}
+                            onClick={() => {
+                              setSelectedQuote(quote);
+                              setShowViewModal(true);
+                            }}
                             className="text-blue-600 hover:text-blue-900 mr-3"
                           >
                             Voir
@@ -278,7 +283,10 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                     </div>
                     <div className="mt-3 flex space-x-2">
                       <button
-                        onClick={() => setSelectedQuote(quote)}
+                        onClick={() => {
+                          setSelectedQuote(quote);
+                          setShowViewModal(true);
+                        }}
                         className="flex-1 text-center bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100"
                       >
                         Voir
@@ -312,6 +320,17 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
           console.log('Ligne ajoutée:', params, result);
           setShowCalculator(false);
         }}
+      />
+
+      {/* Modal visualisation devis */}
+      <QuoteViewModal
+        quote={selectedQuote}
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedQuote(null);
+        }}
+        canEdit={canCreateQuotes}
       />
     </div>
   );
