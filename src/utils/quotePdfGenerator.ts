@@ -308,22 +308,22 @@ function addBankingInfo(doc: jsPDF, quote: Quote, startY: number) {
 function addCGVPage(doc: jsPDF) {
   doc.addPage();
 
-  const margin = 15;
+  const margin = 10;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const columnWidth = (pageWidth - (margin * 4)) / 3;
   const footerHeight = 15;
 
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(41, 98, 255);
-  doc.text('CONDITIONS GÉNÉRALES DE VENTE', pageWidth / 2, 20, { align: 'center' });
+  doc.text('CONDITIONS GÉNÉRALES DE VENTE', pageWidth / 2, 15, { align: 'center' });
 
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(0, 0, 0);
 
   const paragraphs = CGV_TEXT.split('\n\n');
-  let yPos = 35;
+  let yPos = 22;
   let column = 0;
   let xPos = margin;
 
@@ -344,22 +344,19 @@ function addCGVPage(doc: jsPDF) {
         if (yPos > pageHeight - margin - footerHeight) {
           column++;
           if (column >= 3) {
-            addCGVFooter(doc);
-            doc.addPage();
-            column = 0;
-            yPos = 35;
+            break;
           } else {
-            yPos = 35;
+            yPos = 22;
           }
           xPos = margin + (column * (columnWidth + margin));
         }
 
         doc.text(wrappedLine, xPos, yPos);
-        yPos += 3.5;
+        yPos += 2.8;
       }
     }
 
-    yPos += 2;
+    yPos += 1.5;
   }
 
   addCGVFooter(doc);
