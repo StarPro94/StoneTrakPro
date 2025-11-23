@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Users, Shield, Settings, AlertTriangle, Edit2, Save, X, UserCheck, Layers } from 'lucide-react';
+import { Users, Shield, Settings, AlertTriangle, Edit2, Save, X, UserCheck, Layers, Building2 } from 'lucide-react';
 import { useProfiles } from '../hooks/useProfiles';
 import { useMachines } from '../hooks/useMachines';
 import { UserProfile } from '../hooks/useUserProfile';
 import ConfirmationModal from './ConfirmationModal';
 import MachinesManager from './MachinesManager';
 import MaterialsManager from './MaterialsManager';
+import ClientsManager from './ClientsManager';
 
 interface AdminPanelProps {
   profileLoading: boolean;
@@ -25,7 +26,7 @@ export default function AdminPanel({ profileLoading, profile: currentUserProfile
   console.log('AdminPanel currentUserProfile?.isAdmin:', currentUserProfile?.isAdmin);
   console.log('=== FIN ADMIN PANEL DEBUG ===');
 
-  const [activeTab, setActiveTab] = useState<'users' | 'machines' | 'materials'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'machines' | 'materials' | 'clients'>('users');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'username' | 'role' | 'machine' | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -214,6 +215,17 @@ export default function AdminPanel({ profileLoading, profile: currentUserProfile
             >
               <Layers className="h-4 w-4" />
               <span>Matériaux</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('clients')}
+              className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center space-x-2 ${
+                activeTab === 'clients'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              <span>Clients</span>
             </button>
           </div>
         </div>
@@ -465,6 +477,8 @@ export default function AdminPanel({ profileLoading, profile: currentUserProfile
         {activeTab === 'machines' && <MachinesManager />}
 
         {activeTab === 'materials' && <MaterialsManager />}
+
+        {activeTab === 'clients' && <ClientsManager />}
       </div>
     </div>
   );
