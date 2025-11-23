@@ -433,7 +433,8 @@ export interface PricingParameters {
 
   // Pour calcul depuis bloc
   blockPriceM3?: number;
-  sawingCostM2?: number;
+  sawingCostM3?: number; // Coût de sciage du bloc (€/m³)
+  cuttingCostM2?: number; // Coût de débit des tranches (€/m²)
 
   // Pour calcul depuis tranche
   slabPriceM2?: number;

@@ -26,7 +26,8 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
 
   // États pour calcul depuis bloc
   const [blockPriceM3, setBlockPriceM3] = useState<number>(0);
-  const [sawingCostM2, setSawingCostM2] = useState<number>(0);
+  const [sawingCostM3, setSawingCostM3] = useState<number>(0); // Coût de sciage du bloc en €/m³
+  const [cuttingCostM2, setCuttingCostM2] = useState<number>(0); // Coût de débit des tranches en €/m²
 
   // États pour calcul depuis tranche
   const [slabPriceM2, setSlabPriceM2] = useState<number>(0);
@@ -53,7 +54,8 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
     activeTab,
     quantity,
     blockPriceM3,
-    sawingCostM2,
+    sawingCostM3,
+    cuttingCostM2,
     thickness,
     slabPriceM2,
     fabricationCost,
@@ -90,7 +92,8 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
 
       if (editingItem.calculationMethod === 'block') {
         setBlockPriceM3(editingItem.sourcePrice || 0);
-        setSawingCostM2(editingItem.sawingCost || 0);
+        setSawingCostM3(editingItem.sawingCost || 0);
+        setCuttingCostM2(editingItem.fabricationCost || 0);
       } else if (editingItem.calculationMethod === 'slab') {
         setSlabPriceM2(editingItem.sourcePrice || 0);
         setFabricationCost(editingItem.fabricationCost);
@@ -105,7 +108,8 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setUnit('m2');
       setThickness(2);
       setBlockPriceM3(0);
-      setSawingCostM2(0);
+      setSawingCostM3(0);
+      setCuttingCostM2(0);
       setSlabPriceM2(0);
       setFabricationCost(0);
       setManualPrice(0);
@@ -128,7 +132,8 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
         unit,
         thickness: activeTab !== 'manual' ? thickness : undefined,
         blockPriceM3: activeTab === 'block' ? blockPriceM3 : undefined,
-        sawingCostM2: activeTab === 'block' ? sawingCostM2 : undefined,
+        sawingCostM3: activeTab === 'block' ? sawingCostM3 : undefined,
+        cuttingCostM2: activeTab === 'block' ? cuttingCostM2 : undefined,
         slabPriceM2: activeTab === 'slab' ? slabPriceM2 : undefined,
         fabricationCost: activeTab === 'slab' ? fabricationCost : undefined,
         wasteFactor,
@@ -353,16 +358,31 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Coût du débit (€/m²)
+                      Coût de sciage (€/m³)
                     </label>
                     <input
                       type="number"
-                      value={sawingCostM2}
-                      onChange={(e) => setSawingCostM2(Number(e.target.value))}
+                      value={sawingCostM3}
+                      onChange={(e) => setSawingCostM3(Number(e.target.value))}
                       min="0"
                       step="1"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Pour transformer le bloc en tranches</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Coût du débit (€/m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={cuttingCostM2}
+                      onChange={(e) => setCuttingCostM2(Number(e.target.value))}
+                      min="0"
+                      step="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Pour découper les tranches en éléments finis</p>
                   </div>
                 </>
               )}

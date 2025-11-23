@@ -4,7 +4,8 @@ const SAW_BLADE_THICKNESS_CM = 0.5; // Épaisseur de la lame de scie en cm (5mm)
 
 export function calculateFromBlock(
   blockPriceM3: number,
-  sawingCostM2: number,
+  sawingCostM3: number,
+  cuttingCostM2: number,
   thicknessCm: number,
   wasteFactor: number,
   marginCoefficient: number,
@@ -31,13 +32,16 @@ export function calculateFromBlock(
   const surfaceObtainedFromM3 = 1 / thicknessM;
   calculations.push(`Surface obtenue depuis 1m³: ${surfaceObtainedFromM3.toFixed(2)} m²`);
 
-  // 3. Calculer le coût du bloc par m²
-  const blockCostPerM2 = blockPriceM3 / surfaceObtainedFromM3;
-  calculations.push(`Coût bloc au m²: ${blockPriceM3.toFixed(2)}€/m³ ÷ ${surfaceObtainedFromM3.toFixed(2)}m² = ${blockCostPerM2.toFixed(2)}€/m²`);
+  // 3. Calculer le prix des tranches au m² (bloc + sciage)
+  const blockWithSawingM3 = blockPriceM3 + sawingCostM3;
+  calculations.push(`Prix bloc avec sciage: ${blockPriceM3.toFixed(2)}€/m³ + ${sawingCostM3.toFixed(2)}€/m³ (sciage) = ${blockWithSawingM3.toFixed(2)}€/m³`);
+
+  const slabPriceM2 = blockWithSawingM3 / surfaceObtainedFromM3;
+  calculations.push(`Prix des tranches au m²: ${blockWithSawingM3.toFixed(2)}€/m³ ÷ ${surfaceObtainedFromM3.toFixed(2)}m² = ${slabPriceM2.toFixed(2)}€/m²`);
 
   // 4. Ajouter le coût du débit
-  const baseCostM2 = blockCostPerM2 + sawingCostM2;
-  calculations.push(`Avec coût débit: ${blockCostPerM2.toFixed(2)}€ + ${sawingCostM2.toFixed(2)}€ (débit) = ${baseCostM2.toFixed(2)}€/m²`);
+  const baseCostM2 = slabPriceM2 + cuttingCostM2;
+  calculations.push(`Avec coût débit: ${slabPriceM2.toFixed(2)}€ + ${cuttingCostM2.toFixed(2)}€ (débit) = ${baseCostM2.toFixed(2)}€/m²`);
 
   // 5. Appliquer le coefficient de perte
   const costWithWaste = baseCostM2 * wasteFactor;
@@ -141,13 +145,14 @@ export function calculateFromSlab(
 
 export function calculatePricing(params: PricingParameters): PricingResult {
   if (params.calculationMethod === 'block') {
-    if (!params.blockPriceM3 || !params.sawingCostM2 || !params.thickness) {
+    if (!params.blockPriceM3 || params.sawingCostM3 === undefined || params.cuttingCostM2 === undefined || !params.thickness) {
       throw new Error('Paramètres manquants pour le calcul depuis bloc');
     }
 
     const result = calculateFromBlock(
       params.blockPriceM3,
-      params.sawingCostM2,
+      params.sawingCostM3,
+      params.cuttingCostM2,
       params.thickness,
       params.wasteFactor,
       params.marginCoefficient,
