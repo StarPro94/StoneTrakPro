@@ -57,8 +57,8 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
     });
 
     if (newQuote) {
-      // Recharger pour voir le nouveau devis
-      window.location.reload();
+      setSelectedQuote(newQuote);
+      setShowEditModal(true);
     }
   };
 
