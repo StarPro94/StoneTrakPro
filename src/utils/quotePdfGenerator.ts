@@ -89,12 +89,11 @@ Recommandations : Éliminer les poussières et laver à la serpillière humide o
 Traitements de surface : Les traitements de surface exécutés après pose tels que ponçage, masticage, cristallisation, encausticage, constituent des travaux supplémentaires. Ils doivent être confiés à des marbriers spécialisés.`;
 
 function formatPrice(price: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
+  const formatted = new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(price);
+  return formatted.replace(/\s/g, '') + ' €';
 }
 
 function formatDate(date: Date): string {
@@ -147,9 +146,9 @@ function addHeader(doc: jsPDF, logoBase64: string | null) {
   return 40;
 }
 
-function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string, startY: number) {
+function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string) {
   const margin = 10;
-  let yPos = startY;
+  let yPos = 10;
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -162,8 +161,6 @@ function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string, startY: num
   doc.text(`PAGE      1/2`, margin, yPos);
   yPos += 4;
   doc.text(`Par       ${userName}`, margin, yPos);
-
-  return yPos + 5;
 }
 
 function addReferencesBox(doc: jsPDF, quote: Quote, startY: number) {
@@ -313,16 +310,16 @@ function addEcheanceAndTotals(doc: jsPDF, quote: Quote, startY: number) {
 
   const tvaTableData = [[
     '3',
-    formatPrice(quote.totalHt).replace(/\s/g, ''),
+    formatPrice(quote.totalHt),
     `${quote.tvaPercent.toFixed(2)}%`,
-    formatPrice(quote.totalTva).replace(/\s/g, '')
+    formatPrice(quote.totalTva)
   ]];
 
   autoTable(doc, {
     startY: yPos,
     head: [['Code', 'Base', 'Taux', 'Montant']],
     body: tvaTableData,
-    foot: [['Total', formatPrice(quote.totalHt).replace(/\s/g, ''), '', formatPrice(quote.totalTva).replace(/\s/g, '')]],
+    foot: [['Total', formatPrice(quote.totalHt), '', formatPrice(quote.totalTva)]],
     theme: 'grid',
     headStyles: {
       fillColor: [255, 255, 255],
@@ -497,9 +494,9 @@ export async function generateQuotePDF(quote: Quote, userName: string): Promise<
 
   const logoBase64 = await loadLogoAsBase64(COMPANY_INFO.logoPath);
 
-  let yPos = addHeader(doc, logoBase64);
+  addQuoteInfoBox(doc, quote, userName);
 
-  addQuoteInfoBox(doc, quote, userName, yPos);
+  let yPos = addHeader(doc, logoBase64);
 
   addReferencesBox(doc, quote, yPos);
   yPos = addClientBox(doc, quote, yPos);
