@@ -33,6 +33,7 @@ export function useQuotes() {
 
       const mappedQuotes: Quote[] = (data || []).map((q: any) => ({
         id: q.id,
+        quoteReference: q.quote_reference,
         clientCompany: q.client_company,
         clientContactName: q.client_contact_name,
         clientAddress: q.client_address,
@@ -113,6 +114,7 @@ export function useQuotes() {
 
       return {
         id: data.id,
+        quoteReference: data.quote_reference,
         clientCompany: data.client_company,
         clientContactName: data.client_contact_name,
         clientAddress: data.client_address,
@@ -183,6 +185,7 @@ export function useQuotes() {
       // Mapper le devis créé
       const newQuote: Quote = {
         id: data.id,
+        quoteReference: data.quote_reference,
         clientCompany: data.client_company,
         clientContactName: data.client_contact_name,
         clientAddress: data.client_address,

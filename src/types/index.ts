@@ -376,6 +376,7 @@ export type CalculationMethod = 'block' | 'slab' | 'manual';
 
 export interface Quote {
   id: string;
+  quoteReference: string;
   clientCompany: string;
   clientContactName: string | null;
   clientAddress: string | null;

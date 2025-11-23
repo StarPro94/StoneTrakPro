@@ -213,6 +213,7 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -225,10 +226,13 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                     {quotes.map((quote) => (
                       <tr key={quote.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{quote.clientName}</div>
+                          <div className="text-sm font-bold text-blue-600">{quote.quoteReference}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-600">{quote.projectName || '-'}</div>
+                          <div className="text-sm font-medium text-gray-900">{quote.clientCompany}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">{quote.siteName || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-600">{new Date(quote.quoteDate).toLocaleDateString('fr-FR')}</div>
@@ -274,8 +278,9 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
                   <div key={quote.id} className="p-4 hover:bg-gray-50">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{quote.clientName}</h3>
-                        <p className="text-sm text-gray-600">{quote.projectName || 'Sans projet'}</p>
+                        <div className="text-sm font-bold text-blue-600 mb-1">{quote.quoteReference}</div>
+                        <h3 className="font-semibold text-gray-900">{quote.clientCompany}</h3>
+                        <p className="text-sm text-gray-600">{quote.siteName || 'Sans chantier'}</p>
                       </div>
                       {getStatusBadge(quote.status)}
                     </div>

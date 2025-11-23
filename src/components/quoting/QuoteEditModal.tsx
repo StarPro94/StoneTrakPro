@@ -260,7 +260,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold">Modifier le Devis</h2>
-                <p className="text-sm text-blue-100">N° {quote.id.slice(0, 8)}</p>
+                <p className="text-sm text-blue-100">N° {quote.quoteReference}</p>
               </div>
             </div>
             <button
