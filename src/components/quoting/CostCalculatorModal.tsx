@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calculator, Info } from 'lucide-react';
-import { PricingParameters, PricingResult, CalculationMethod } from '../../types';
+import { PricingParameters, PricingResult, CalculationMethod, QuoteItem } from '../../types';
 import { calculatePricing, getSuggestedMargin, getSuggestedWasteFactor, formatPrice } from '../../utils/pricingCalculations';
 import { useMaterials } from '../../hooks/useMaterials';
 import MaterialSearchCombobox from '../MaterialSearchCombobox';
@@ -10,9 +10,10 @@ interface CostCalculatorModalProps {
   onClose: () => void;
   onAddToQuote: (params: PricingParameters, result: PricingResult) => void;
   defaultMethod?: CalculationMethod;
+  editingItem?: QuoteItem | null;
 }
 
-export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, defaultMethod = 'slab' }: CostCalculatorModalProps) {
+export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, defaultMethod = 'slab', editingItem = null }: CostCalculatorModalProps) {
   const { blocMaterialNames, trancheMaterialNames } = useMaterials();
   const [activeTab, setActiveTab] = useState<CalculationMethod>(defaultMethod);
 
@@ -69,6 +70,48 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setMarginCoefficient(getSuggestedMargin(activeTab));
     }
   }, [activeTab]);
+
+  // Charger les données de la ligne en édition
+  useEffect(() => {
+    if (editingItem && isOpen) {
+      setActiveTab(editingItem.calculationMethod);
+      setMaterialName(editingItem.materialName || '');
+      setDescription(editingItem.description || '');
+      setQuantity(editingItem.quantity);
+      setUnit(editingItem.unit);
+      setThickness(editingItem.thickness || 2);
+      setWasteFactor(editingItem.wasteFactor);
+      setMarginCoefficient(editingItem.marginCoefficient);
+      setLaborCost(editingItem.laborCost);
+      setConsumablesCost(editingItem.consumablesCost);
+
+      if (editingItem.calculationMethod === 'block') {
+        setBlockPriceM3(editingItem.sourcePrice || 0);
+        setSawingCostM2(editingItem.sawingCost || 0);
+      } else if (editingItem.calculationMethod === 'slab') {
+        setSlabPriceM2(editingItem.sourcePrice || 0);
+        setFabricationCost(editingItem.fabricationCost);
+      } else if (editingItem.calculationMethod === 'manual') {
+        setManualPrice(editingItem.unitSellingPrice);
+      }
+    } else if (!editingItem && isOpen) {
+      // Réinitialiser pour une nouvelle ligne
+      setMaterialName('');
+      setDescription('');
+      setQuantity(1);
+      setUnit('m2');
+      setThickness(2);
+      setBlockPriceM3(0);
+      setSawingCostM2(0);
+      setSlabPriceM2(0);
+      setFabricationCost(0);
+      setManualPrice(0);
+      setLaborCost(0);
+      setConsumablesCost(0);
+      setWasteFactor(getSuggestedWasteFactor(activeTab));
+      setMarginCoefficient(getSuggestedMargin(activeTab));
+    }
+  }, [editingItem, isOpen]);
 
   const calculatePrice = () => {
     try {
@@ -153,8 +196,12 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
               <Calculator className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Calculateur de Prix</h2>
-              <p className="text-sm text-blue-100">Ajoutez une ligne au devis</p>
+              <h2 className="text-xl sm:text-2xl font-bold">
+                {editingItem ? 'Modifier la ligne' : 'Calculateur de Prix'}
+              </h2>
+              <p className="text-sm text-blue-100">
+                {editingItem ? 'Modifiez les paramètres de la ligne' : 'Ajoutez une ligne au devis'}
+              </p>
             </div>
           </div>
           <button
@@ -520,7 +567,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
             disabled={!result || !!error}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            Ajouter au devis
+            {editingItem ? 'Modifier la ligne' : 'Ajouter au devis'}
           </button>
         </div>
       </div>

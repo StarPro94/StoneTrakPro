@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, FileText, User, Package, Calendar } from 'lucide-react';
+import { X, Save, Plus, Trash2, FileText, User, Package, Calendar, Edit } from 'lucide-react';
 import { Quote, QuoteItem, PricingParameters, PricingResult } from '../../types';
 import { formatPrice, calculateQuoteTotals } from '../../utils/pricingCalculations';
 import { useQuotes } from '../../hooks/useQuotes';
@@ -29,6 +29,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
 
   const [showCalculator, setShowCalculator] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editingItemData, setEditingItemData] = useState<QuoteItem | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Charger les données du devis
@@ -77,8 +78,29 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       updatedAt: new Date()
     };
 
-    setItems([...items, newItem]);
+    if (editingItemIndex !== null) {
+      // Mode édition : remplacer la ligne existante
+      const updatedItems = [...items];
+      updatedItems[editingItemIndex] = {
+        ...updatedItems[editingItemIndex],
+        ...newItem,
+        id: updatedItems[editingItemIndex].id // Garder l'ID original
+      };
+      setItems(updatedItems);
+      setEditingItemIndex(null);
+      setEditingItemData(null);
+    } else {
+      // Mode ajout : ajouter une nouvelle ligne
+      setItems([...items, newItem]);
+    }
+
     setShowCalculator(false);
+  };
+
+  const handleEditItem = (index: number) => {
+    setEditingItemIndex(index);
+    setEditingItemData(items[index]);
+    setShowCalculator(true);
   };
 
   const handleDeleteItem = async (index: number) => {
@@ -323,12 +345,22 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteItem(index)}
-                            className="ml-4 text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
+                          <div className="ml-4 flex flex-col space-y-2">
+                            <button
+                              onClick={() => handleEditItem(index)}
+                              className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Modifier"
+                            >
+                              <Edit className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(index)}
+                              className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -439,8 +471,13 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       {/* Modal calculateur */}
       <CostCalculatorModal
         isOpen={showCalculator}
-        onClose={() => setShowCalculator(false)}
+        onClose={() => {
+          setShowCalculator(false);
+          setEditingItemIndex(null);
+          setEditingItemData(null);
+        }}
         onAddToQuote={handleAddItem}
+        editingItem={editingItemData}
       />
     </>
   );
