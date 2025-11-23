@@ -81,6 +81,7 @@ function App() {
   const {
     sheets,
     loading: sheetsLoading,
+    importLoading,
     error: sheetsError,
     updateSheet,
     addSheet,
@@ -163,7 +164,7 @@ function App() {
   if (selectedSheet) {
     return (
       <>
-        {sheetsLoading && <LoadingSpinner />}
+        {importLoading && <LoadingSpinner />}
         <div className="min-h-screen bg-gray-50">
           <Header
             activeTab={activeTab}
@@ -191,7 +192,7 @@ function App() {
   // Affichage principal de l'application
   return (
     <ToastProvider>
-      {sheetsLoading && <LoadingSpinner />}
+      {importLoading && <LoadingSpinner />}
       <ToastContainer />
       <div className="min-h-screen bg-gray-50">
         <Header

@@ -7,6 +7,7 @@ export function useDebitSheets() {
   const { user } = useAuth();
   const [sheets, setSheets] = useState<DebitSheet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importLoading, setImportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to safely parse dates
@@ -356,7 +357,7 @@ export function useDebitSheets() {
     }
 
     try {
-      setLoading(true);
+      setImportLoading(true);
       setError(null);
 
       console.log('=== DÉBUT IMPORT EXCEL ===');
@@ -417,7 +418,7 @@ export function useDebitSheets() {
       console.error('Erreur lors de l\'import Excel:', err);
       throw err;
     } finally {
-      setLoading(false);
+      setImportLoading(false);
     }
   };
 
@@ -428,7 +429,7 @@ export function useDebitSheets() {
     }
 
     try {
-      setLoading(true);
+      setImportLoading(true);
       setError(null);
 
       console.log('=== DÉBUT IMPORT PDF ===');
@@ -486,7 +487,7 @@ export function useDebitSheets() {
       setError(err.message);
       throw err;
     } finally {
-      setLoading(false);
+      setImportLoading(false);
     }
   };
   useEffect(() => {
@@ -739,6 +740,7 @@ export function useDebitSheets() {
   return {
     sheets,
     loading,
+    importLoading,
     error,
     updateSheet,
     addSheet,
