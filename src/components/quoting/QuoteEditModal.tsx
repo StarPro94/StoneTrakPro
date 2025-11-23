@@ -31,9 +31,6 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingItemData, setEditingItemData] = useState<QuoteItem | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showPalletsModal, setShowPalletsModal] = useState(false);
-  const [palletsQuantity, setPalletsQuantity] = useState(1);
-  const [palletPrice, setPalletPrice] = useState(15);
 
   // Charger les données du devis
   useEffect(() => {
@@ -119,42 +116,6 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
       const newItems = items.filter((_, i) => i !== index);
       setItems(newItems);
     }
-  };
-
-  const handleAddPallets = () => {
-    const totalPrice = palletsQuantity * palletPrice;
-
-    const newItem: QuoteItem = {
-      id: `temp-${Date.now()}`,
-      quoteId: quote?.id || '',
-      itemOrder: items.length,
-      description: `Palettes (${palletsQuantity}×${palletPrice}€)`,
-      materialId: null,
-      materialName: null,
-      quantity: palletsQuantity,
-      unit: 'u',
-      thickness: null,
-      calculationMethod: 'manual',
-      sourcePrice: null,
-      sawingCost: null,
-      wasteFactor: 1,
-      marginCoefficient: 1,
-      laborCost: 0,
-      consumablesCost: 0,
-      fabricationCost: 0,
-      overheadCoefficient: 1,
-      unitCostPrice: palletPrice,
-      unitSellingPrice: palletPrice,
-      totalPrice: totalPrice,
-      notes: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    setItems([...items, newItem]);
-    setShowPalletsModal(false);
-    setPalletsQuantity(1);
-    setPalletPrice(15);
   };
 
   const handleSave = async () => {
@@ -322,22 +283,13 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900">Lignes du devis</h3>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setShowPalletsModal(true)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-                    >
-                      <Package className="h-4 w-4" />
-                      <span>Palettes</span>
-                    </button>
-                    <button
-                      onClick={() => setShowCalculator(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Ajouter une ligne</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowCalculator(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Ajouter une ligne</span>
+                  </button>
                 </div>
 
                 {items.length === 0 ? (
@@ -528,88 +480,6 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         onAddToQuote={handleAddItem}
         editingItem={editingItemData}
       />
-
-      {/* Modal ajout palettes */}
-      {showPalletsModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-green-600 to-emerald-600 text-white">
-              <div className="flex items-center space-x-3">
-                <Package className="h-6 w-6" />
-                <h3 className="text-lg font-bold">Ajouter des palettes</h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowPalletsModal(false);
-                  setPalletsQuantity(1);
-                  setPalletPrice(15);
-                }}
-                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre de palettes
-                </label>
-                <input
-                  type="number"
-                  value={palletsQuantity}
-                  onChange={(e) => setPalletsQuantity(Number(e.target.value))}
-                  min="1"
-                  step="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prix par palette (€ HT)
-                </label>
-                <input
-                  type="number"
-                  value={palletPrice}
-                  onChange={(e) => setPalletPrice(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Total</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    {formatPrice(palletsQuantity * palletPrice)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 p-4 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => {
-                  setShowPalletsModal(false);
-                  setPalletsQuantity(1);
-                  setPalletPrice(15);
-                }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleAddPallets}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Ajouter
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
