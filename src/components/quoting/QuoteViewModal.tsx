@@ -1,7 +1,9 @@
-import React from 'react';
-import { X, FileText, Calendar, User, DollarSign, Package, Edit2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, Calendar, User, DollarSign, Package, Edit2, Download } from 'lucide-react';
 import { Quote, QuoteStatus } from '../../types';
 import { formatPrice } from '../../utils/pricingCalculations';
+import { downloadQuotePDF } from '../../utils/quotePdfGenerator';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 interface QuoteViewModalProps {
   quote: Quote | null;
@@ -12,7 +14,23 @@ interface QuoteViewModalProps {
 }
 
 export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit }: QuoteViewModalProps) {
+  const { profile } = useUserProfile();
+  const [isExporting, setIsExporting] = useState(false);
+
   if (!isOpen || !quote) return null;
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const userName = profile?.username || 'Commercial';
+      await downloadQuotePDF(quote, userName);
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const getStatusBadge = (status: QuoteStatus) => {
     const badges = {
@@ -65,7 +83,7 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit
                     <User className="h-4 w-4" />
                     <span className="text-sm font-medium">Client</span>
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{quote.clientName}</p>
+                  <p className="text-lg font-semibold text-gray-900">{quote.clientCompany}</p>
                 </div>
 
                 <div>
@@ -73,7 +91,7 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit
                     <Package className="h-4 w-4" />
                     <span className="text-sm font-medium">Projet</span>
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{quote.projectName || 'Sans projet'}</p>
+                  <p className="text-lg font-semibold text-gray-900">{quote.siteName || 'Sans chantier'}</p>
                 </div>
 
                 <div>
@@ -93,14 +111,16 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit
                 </div>
 
                 <div>
-                  <div className="text-sm font-medium text-gray-600 mb-1">Validité</div>
-                  <p className="text-gray-900">{quote.validityPeriod}</p>
+                  <div className="text-sm font-medium text-gray-600 mb-1">Délai estimé</div>
+                  <p className="text-gray-900">{quote.estimatedDelay || '1 mois'}</p>
                 </div>
 
-                <div>
-                  <div className="text-sm font-medium text-gray-600 mb-1">Conditions de paiement</div>
-                  <p className="text-gray-900">{quote.paymentConditions}</p>
-                </div>
+                {quote.osNumber && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-1">N° OS</div>
+                    <p className="text-gray-900">{quote.osNumber}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -227,6 +247,14 @@ export default function QuoteViewModal({ quote, isOpen, onClose, canEdit, onEdit
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Fermer
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              <span>{isExporting ? 'Export...' : 'Export PDF'}</span>
             </button>
             {canEdit && quote.status === 'draft' && (
               <button
