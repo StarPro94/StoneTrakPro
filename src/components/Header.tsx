@@ -40,9 +40,9 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
 
   return (
     <header className="bg-slate-900 text-white shadow-lg relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <div className="flex items-center space-x-4 mr-16 flex-shrink-0 min-w-fit">
+          <div className="flex items-center space-x-4 flex-shrink-0 min-w-fit">
             <img
               src="/Sans_titre265-removebg-preview.png"
               alt="DBPM Logo"
@@ -53,8 +53,8 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
               <span className="text-xs text-gray-400 whitespace-nowrap">for DBPM</span>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-4">
+
+          <div className="flex items-center space-x-4 flex-1 justify-center">
             {/* Navigation de bureau - masquée sur mobile/tablette */}
             <nav className="hidden md:flex space-x-2">
               {showDashboard && (
@@ -173,7 +173,10 @@ export default function Header({ activeTab, onTabChange, profile, profileLoading
               )}
             </nav>
 
-            {/* Informations utilisateur - adaptées pour mobile */}
+          </div>
+
+          {/* Informations utilisateur - adaptées pour mobile */}
+          <div className="flex items-center space-x-3 flex-shrink-0">
             {user && (
               <div className="hidden sm:flex items-center space-x-3 border-l border-slate-700 pl-4">
                 <div className="flex flex-col items-start">
