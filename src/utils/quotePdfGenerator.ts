@@ -4,11 +4,15 @@ import { Quote } from '../types';
 
 const COMPANY_INFO = {
   name: 'DBPM',
+  tagline: 'LA PIERRE QUE VOUS CHERCHEZ',
   address: '27 rue de VALENTON - Z.I. Les Petites Haies - 94000 CRETEIL - France',
   phone: 'Tél. : 01 48 99 82 50',
   email: 'Contact@dbpm.fr',
-  rib: 'FR76 XXXX XXXX XXXX XXXX XXXX XXX',
+  bank: 'CEPAFRPP751',
+  iban: 'FR76 1751 5900 0008 0217 0165 344',
+  currency: 'EURO',
   legal: 'SA CAPITAL 270 000 € - RCS CRETEIL B 542 703 673 - CODE TVA FR 78 542 703 673 - CODE APE 267 Z',
+  legalNotice: 'TOUTES NOS VENTES SONT CONCLUES CONFORMEMENT AUX CONDITIONS GENERALES DE VENTE ET A LA CLAUSE DE RESERVE DE PROPRIETE',
   logoPath: '/Image1 copy.png'
 };
 
@@ -117,192 +121,296 @@ async function loadLogoAsBase64(logoPath: string): Promise<string | null> {
   }
 }
 
-function addHeader(doc: jsPDF, quote: Quote, userName: string, logoBase64: string | null) {
+function addHeader(doc: jsPDF, logoBase64: string | null) {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  let yPos = 20;
 
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', margin, yPos, 70, 15);
+      const logoWidth = 60;
+      const logoHeight = 13;
+      const logoX = (pageWidth - logoWidth) / 2;
+      doc.addImage(logoBase64, 'PNG', logoX, 10, logoWidth, logoHeight);
     } catch (error) {
       console.error('Erreur lors de l\'ajout du logo:', error);
     }
   }
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  yPos += 25;
-  doc.text(COMPANY_INFO.address, margin, yPos);
-  yPos += 4;
-  doc.text(`${COMPANY_INFO.phone} - ${COMPANY_INFO.email}`, margin, yPos);
-
-  yPos = 20;
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(41, 98, 255);
-  doc.text('DEVIS', pageWidth - margin, yPos, { align: 'right' });
-
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
-  yPos += 10;
-  doc.text(`N° ${quote.quoteReference || 'En attente'}`, pageWidth - margin, yPos, { align: 'right' });
-  yPos += 6;
-  doc.text(`Date : ${formatDate(quote.quoteDate)}`, pageWidth - margin, yPos, { align: 'right' });
-  yPos += 6;
-  doc.text(`Validité : ${quote.estimatedDelay || '1 mois'}`, pageWidth - margin, yPos, { align: 'right' });
-  yPos += 6;
-  doc.text(`Commercial : ${userName}`, pageWidth - margin, yPos, { align: 'right' });
+  doc.text(COMPANY_INFO.tagline, pageWidth / 2, 26, { align: 'center' });
 
-  return 70;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CONFIRMATION DE PRIX', pageWidth / 2, 35, { align: 'center' });
+
+  return 40;
 }
 
-function addClientInfo(doc: jsPDF, quote: Quote, startY: number) {
-  const margin = 20;
-  const boxWidth = 90;
+function addQuoteInfoBox(doc: jsPDF, quote: Quote, userName: string, startY: number) {
+  const margin = 10;
+  let yPos = startY;
 
-  doc.setDrawColor(200, 200, 200);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+
+  doc.text(`DEVIS \u00e0 ${formatDate(quote.quoteDate).replace(/\//g, ' ')}`, margin, yPos);
+  yPos += 4;
+  doc.text(`DU        ${formatDate(new Date())}`, margin, yPos);
+  yPos += 4;
+  doc.text(`PAGE      1/2`, margin, yPos);
+  yPos += 4;
+  doc.text(`Par       ${userName}`, margin, yPos);
+
+  return yPos + 5;
+}
+
+function addReferencesBox(doc: jsPDF, quote: Quote, startY: number) {
+  const margin = 10;
+  const boxWidth = 95;
+  const boxHeight = 45;
+
+  doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
-  doc.rect(margin, startY, boxWidth, 35);
+  doc.roundedRect(margin, startY, boxWidth, boxHeight, 3, 3);
 
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  let yPos = startY + 7;
-  doc.text('CLIENT', margin + 5, yPos);
+  let yPos = startY + 6;
+  doc.text('R\u00c9F\u00c9RENCES', margin + 3, yPos);
+
+  doc.setFont('helvetica', 'normal');
+  yPos += 5;
+  doc.text('Chantier :', margin + 3, yPos);
+  doc.setFont('helvetica', 'bold');
+  doc.text(quote.siteName || quote.osNumber || '-', margin + 20, yPos);
 
   doc.setFont('helvetica', 'normal');
   yPos += 6;
-  doc.text(quote.clientCompany, margin + 5, yPos);
+  doc.text(`Banque : ${COMPANY_INFO.bank}`, margin + 3, yPos);
+  yPos += 4;
+  doc.text(`IBAN : ${COMPANY_INFO.iban}`, margin + 3, yPos);
+  yPos += 4;
+  doc.text(`Devise: ${COMPANY_INFO.currency}`, margin + 3, yPos);
 
+  yPos += 5;
+  doc.text(`Validit\u00e9 : ${quote.estimatedDelay || '1 mois'}`, margin + 3, yPos);
+
+  yPos += 5;
+  doc.text(`D\u00e9lai estim\u00e9 (hors conges) : ${quote.estimatedDelay || '6 \u00e0 7 SEM'}`, margin + 3, yPos);
+
+  yPos += 5;
+  doc.setFontSize(7);
+  doc.setTextColor(255, 0, 0);
+  const noteLines = doc.splitTextToSize('Le d\u00e9lai d\u00e9finitif sera communiqu\u00e9 \u00e0 r\u00e9ception de tous les \u00e9l\u00e9ments n\u00e9cessaires \u00e0 la fabrication', boxWidth - 6);
+  doc.text(noteLines, margin + 3, yPos);
+
+  doc.setTextColor(0, 0, 0);
+
+  return startY + boxHeight + 5;
+}
+
+function addClientBox(doc: jsPDF, quote: Quote, startY: number) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 10;
+  const boxWidth = 95;
+  const boxHeight = 45;
+  const boxX = pageWidth - margin - boxWidth;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(boxX, startY, boxWidth, boxHeight, 3, 3);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  let yPos = startY + 6;
+  doc.text(quote.clientCompany.toUpperCase(), boxX + 3, yPos);
+
+  doc.setFont('helvetica', 'normal');
+  yPos += 5;
   if (quote.clientContactName) {
-    yPos += 5;
-    doc.text(quote.clientContactName, margin + 5, yPos);
+    doc.text(quote.clientContactName, boxX + 3, yPos);
+    yPos += 4;
   }
 
   if (quote.clientAddress) {
-    yPos += 5;
-    const addressLines = doc.splitTextToSize(quote.clientAddress, boxWidth - 10);
-    doc.text(addressLines, margin + 5, yPos);
-    yPos += addressLines.length * 5;
+    const addressLines = doc.splitTextToSize(quote.clientAddress, boxWidth - 6);
+    doc.text(addressLines, boxX + 3, yPos);
+    yPos += addressLines.length * 4;
   }
 
-  doc.setFont('helvetica', 'bold');
-  yPos = startY + 7;
-  const rightMargin = margin + boxWidth + 10;
-  doc.text('RÉFÉRENCE CHANTIER', rightMargin, yPos);
+  yPos += 2;
+  if (quote.clientPhone) {
+    doc.text(`Tel :  ${quote.clientPhone}`, boxX + 3, yPos);
+    yPos += 4;
+  }
 
-  doc.setFont('helvetica', 'normal');
-  yPos += 6;
-  doc.text(quote.siteName || quote.osNumber || '-', rightMargin, yPos);
+  if (quote.clientEmail) {
+    doc.text(`Mail : ${quote.clientEmail}`, boxX + 3, yPos);
+  }
 
-  return startY + 45;
+  return startY + boxHeight + 5;
 }
 
 function addItemsTable(doc: jsPDF, quote: Quote, startY: number) {
   const items = quote.items || [];
 
-  const tableData = items.map((item, index) => [
+  const tableData = items.map((item) => [
     item.description || '-',
     item.unit || '-',
     item.quantity.toString(),
     formatPrice(item.unitSellingPrice),
-    formatPrice(item.totalPrice),
-    `${quote.tvaPercent}%`
+    formatPrice(item.totalPrice)
   ]);
 
   autoTable(doc, {
     startY: startY,
-    head: [['Description', 'Unité', 'Qté', 'PU HT', 'Total HT', 'TVA']],
+    head: [['Description', 'Unit\u00e9', 'Qt\u00e9', 'PU', 'TOTAL HT']],
     body: tableData,
-    theme: 'striped',
+    theme: 'grid',
     headStyles: {
-      fillColor: [230, 230, 230],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: 'bold',
-      fontSize: 9
+      fontSize: 8,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0]
     },
     bodyStyles: {
-      fontSize: 9
+      fontSize: 8,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0]
     },
     columnStyles: {
-      0: { cellWidth: 70 },
+      0: { cellWidth: 105 },
       1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 30, halign: 'right' },
-      5: { cellWidth: 20, halign: 'center' }
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 25, halign: 'right' },
+      4: { cellWidth: 25, halign: 'right' }
     },
-    margin: { left: 20, right: 20 }
+    margin: { left: 10, right: 10 }
   });
 
-  return (doc as any).lastAutoTable.finalY + 10;
+  return (doc as any).lastAutoTable.finalY + 5;
 }
 
-function addTotals(doc: jsPDF, quote: Quote, startY: number) {
+function addEcheanceAndTotals(doc: jsPDF, quote: Quote, startY: number) {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const labelX = pageWidth - 90;
-  const valueX = pageWidth - margin;
+  const margin = 10;
 
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+
   let yPos = startY;
+  doc.text('\u00c9ch\u00e9ance :', margin, yPos);
+  yPos += 5;
 
-  doc.text('Sous-total HT :', labelX, yPos);
-  doc.text(formatPrice(quote.subtotalHt), valueX, yPos, { align: 'right' });
-  yPos += 7;
+  doc.setFontSize(7);
+  doc.text('Conditions habituelles', margin + 15, yPos);
+  yPos += 5;
 
-  if (quote.discountAmount > 0) {
-    doc.text(`Remise (${quote.discountPercent}%) :`, labelX, yPos);
-    doc.text(`-${formatPrice(quote.discountAmount)}`, valueX, yPos, { align: 'right' });
-    yPos += 7;
+  const tvaTableData = [[
+    '3',
+    formatPrice(quote.totalHt).replace(/\s/g, ''),
+    `${quote.tvaPercent.toFixed(2)}%`,
+    formatPrice(quote.totalTva).replace(/\s/g, '')
+  ]];
 
-    doc.text('Total HT après remise :', labelX, yPos);
-    doc.text(formatPrice(quote.totalHt), valueX, yPos, { align: 'right' });
-    yPos += 7;
-  }
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Code', 'Base', 'Taux', 'Montant']],
+    body: tvaTableData,
+    foot: [['Total', formatPrice(quote.totalHt).replace(/\s/g, ''), '', formatPrice(quote.totalTva).replace(/\s/g, '')]],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 7,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0]
+    },
+    bodyStyles: {
+      fontSize: 7,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0]
+    },
+    footStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 7,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0]
+    },
+    columnStyles: {
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 25, halign: 'right' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 25, halign: 'right' }
+    },
+    margin: { left: margin }
+  });
 
-  doc.text(`TVA (${quote.tvaPercent}%) :`, labelX, yPos);
-  doc.text(formatPrice(quote.totalTva), valueX, yPos, { align: 'right' });
-  yPos += 10;
+  const rightBoxX = pageWidth - margin - 60;
+  const rightBoxY = startY;
+  const rightBoxWidth = 60;
+  const rightBoxHeight = 25;
 
-  doc.setFontSize(12);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.rect(rightBoxX, rightBoxY, rightBoxWidth, rightBoxHeight);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  let rightYPos = rightBoxY + 6;
+
+  doc.text('Prix HT', rightBoxX + 3, rightYPos);
+  doc.text(formatPrice(quote.totalHt), rightBoxX + rightBoxWidth - 3, rightYPos, { align: 'right' });
+  rightYPos += 5;
+
+  doc.text('TVA', rightBoxX + 3, rightYPos);
+  doc.text(formatPrice(quote.totalTva), rightBoxX + rightBoxWidth - 3, rightYPos, { align: 'right' });
+  rightYPos += 5;
+
   doc.setFont('helvetica', 'bold');
-  doc.text('NET À PAYER TTC :', labelX, yPos);
-  doc.text(formatPrice(quote.totalTtc), valueX, yPos, { align: 'right' });
+  doc.text('Net \u00e0 Payer', rightBoxX + 3, rightYPos);
+  doc.text(formatPrice(quote.totalTtc), rightBoxX + rightBoxWidth - 3, rightYPos, { align: 'right' });
 
-  return yPos + 15;
+  return Math.max((doc as any).lastAutoTable.finalY, rightBoxY + rightBoxHeight) + 10;
 }
 
-function addBankingInfo(doc: jsPDF, quote: Quote, startY: number) {
-  const margin = 20;
+function addFirstPageFooter(doc: jsPDF) {
+  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
 
-  let yPos = Math.max(startY, pageHeight - 50);
-
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.text('INFORMATIONS BANCAIRES', margin, yPos);
+  doc.setTextColor(0, 0, 0);
 
+  let yPos = pageHeight - 15;
+
+  doc.text(`${COMPANY_INFO.name}  ${COMPANY_INFO.address}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 3;
+  doc.text(`${COMPANY_INFO.phone} - ${COMPANY_INFO.email}`, pageWidth / 2, yPos, { align: 'center' });
+
+  yPos += 4;
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'normal');
-  yPos += 5;
-  doc.text(`RIB : ${COMPANY_INFO.rib}`, margin, yPos);
-  yPos += 7;
+  doc.text(COMPANY_INFO.legal, pageWidth / 2, yPos, { align: 'center' });
 
+  yPos += 4;
+  doc.setLineWidth(0.1);
+  doc.setLineDash([1, 1]);
+  doc.line(margin, yPos - 2, pageWidth - margin, yPos - 2);
+  doc.setLineDash([]);
+
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
-  doc.text('DÉLAI DE RÉALISATION', margin, yPos);
-
-  doc.setFont('helvetica', 'normal');
-  yPos += 5;
-  doc.text(`Délai estimé : ${quote.estimatedDelay || '1 mois'}`, margin, yPos);
-  yPos += 5;
-
-  const noteText = 'Le délai définitif sera communiqué à réception de tous les éléments nécessaires à la fabrication.';
-  const noteLines = doc.splitTextToSize(noteText, 170);
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  doc.text(noteLines, margin, yPos);
+  doc.text(COMPANY_INFO.legalNotice, pageWidth / 2, yPos, { align: 'center' });
 }
 
 function addCGVPage(doc: jsPDF) {
@@ -389,15 +497,18 @@ export async function generateQuotePDF(quote: Quote, userName: string): Promise<
 
   const logoBase64 = await loadLogoAsBase64(COMPANY_INFO.logoPath);
 
-  let yPos = addHeader(doc, quote, userName, logoBase64);
+  let yPos = addHeader(doc, logoBase64);
 
-  yPos = addClientInfo(doc, quote, yPos);
+  addQuoteInfoBox(doc, quote, userName, yPos);
+
+  addReferencesBox(doc, quote, yPos);
+  yPos = addClientBox(doc, quote, yPos);
 
   yPos = addItemsTable(doc, quote, yPos);
 
-  yPos = addTotals(doc, quote, yPos);
+  yPos = addEcheanceAndTotals(doc, quote, yPos);
 
-  addBankingInfo(doc, quote, yPos);
+  addFirstPageFooter(doc);
 
   addCGVPage(doc);
 
