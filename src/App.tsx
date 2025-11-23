@@ -130,6 +130,7 @@ function App() {
   const confirmDeleteSheet = async () => {
     if (sheetToDelete) {
       await deleteSheet(sheetToDelete);
+      setShowDeleteConfirm(false);
       setSheetToDelete(null);
     }
   };

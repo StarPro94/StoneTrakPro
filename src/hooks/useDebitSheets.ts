@@ -332,8 +332,10 @@ export function useDebitSheets() {
       console.log('Résultat de la suppression en base:', error ? 'ERREUR' : 'SUCCÈS');
       if (error) throw error;
 
-      // Le Realtime va automatiquement supprimer la feuille
-      console.log('Attente de la mise à jour Realtime automatique...');
+      // Forcer un rechargement immédiat pour être sûr que la feuille disparaît
+      console.log('Rechargement des feuilles après suppression...');
+      await fetchSheets();
+      console.log('Rechargement terminé après suppression');
 
       console.log('=== FIN SUPPRESSION SHEET ===');
     } catch (err: any) {
@@ -610,10 +612,21 @@ export function useDebitSheets() {
               );
               console.log('setSheets appelé pour mettre à jour la feuille');
             } else if (payload.eventType === 'DELETE') {
+              console.log('=== DÉBUT TRAITEMENT DELETE SHEET ===');
+              console.log('Realtime DELETE event received for sheet ID:', payload.old.id);
+              console.log('Payload old data:', payload.old);
+              console.log('Current sheets count before delete:', sheets.length);
+
               // Supprimer la feuille de l'état local
-              setSheets(prevSheets => 
-                prevSheets.filter(sheet => sheet.id !== payload.old.id)
-              );
+              setSheets(prevSheets => {
+                console.log('Previous sheets count:', prevSheets.length);
+                console.log('Filtering out sheet with ID:', payload.old.id);
+                const filteredSheets = prevSheets.filter(sheet => sheet.id !== payload.old.id);
+                console.log('Filtered sheets count:', filteredSheets.length);
+                return filteredSheets;
+              });
+              console.log('setSheets appelé pour supprimer la feuille');
+              console.log('=== FIN TRAITEMENT DELETE SHEET ===');
             }
           }
         )
