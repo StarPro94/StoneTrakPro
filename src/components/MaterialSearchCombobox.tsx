@@ -107,12 +107,7 @@ export default function MaterialSearchCombobox({
     setSearch(newSearch);
     setIsOpen(true);
     setHighlightedIndex(-1);
-
-    if (!newSearch) {
-      onChange('');
-    } else {
-      onChange('');
-    }
+    onChange(newSearch);
   };
 
   const handleSelectMaterial = (material: string) => {
@@ -225,9 +220,17 @@ export default function MaterialSearchCombobox({
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
         >
           {console.log('MaterialSearchCombobox: Dropdown render - isOpen:', isOpen, 'filteredMaterials:', filteredMaterials.length)}
+
+          {search && search.length > 0 && !materials.includes(search) && (
+            <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+              <div className="text-sm text-blue-700 font-medium">💡 Utiliser "{search}"</div>
+              <div className="text-xs text-blue-600 mt-1">Matériau personnalisé (pas dans le catalogue)</div>
+            </div>
+          )}
+
           {search && search.length > 0 && search.length < 3 ? (
             <div className="px-4 py-3 text-gray-500 text-sm text-center">
-              Entrez au moins 3 caractères pour rechercher
+              Entrez au moins 3 caractères pour rechercher dans le catalogue
             </div>
           ) : filteredMaterials.length > 0 ? (
             <>
@@ -259,9 +262,13 @@ export default function MaterialSearchCombobox({
                 </div>
               )}
             </>
+          ) : search && search.length >= 3 ? (
+            <div className="px-4 py-3 text-gray-500 text-sm text-center">
+              Aucun matériau trouvé dans le catalogue. Vous pouvez utiliser ce nom personnalisé.
+            </div>
           ) : (
             <div className="px-4 py-3 text-gray-500 text-sm text-center">
-              {search && search.length >= 3 ? 'Aucun matériau trouvé' : 'Aucun matériau disponible'}
+              Tapez pour rechercher ou saisir un nom personnalisé
             </div>
           )}
         </div>
@@ -270,14 +277,14 @@ export default function MaterialSearchCombobox({
       {value && materials.includes(value) && (
         <div className="mt-1 text-xs text-green-600 flex items-center">
           <span className="inline-block w-2 h-2 bg-green-600 rounded-full mr-1"></span>
-          Matériau valide
+          Matériau du catalogue
         </div>
       )}
 
-      {value && !materials.includes(value) && (
-        <div className="mt-1 text-xs text-red-600 flex items-center">
-          <span className="inline-block w-2 h-2 bg-red-600 rounded-full mr-1"></span>
-          Veuillez sélectionner un matériau de la liste
+      {value && !materials.includes(value) && value.length > 0 && (
+        <div className="mt-1 text-xs text-blue-600 flex items-center">
+          <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-1"></span>
+          Matériau personnalisé
         </div>
       )}
     </div>
