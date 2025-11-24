@@ -21,7 +21,7 @@ type SortDirection = 'asc' | 'desc';
 type PeriodFilter = 'all' | 'week' | 'month' | 'year';
 
 export default function QuotingModule({ profileLoading, profile, isAdmin, isBureau }: QuotingModuleProps) {
-  const { quotes, loading, isInitialLoad, error, createQuote, updateQuoteStatus, deleteQuote } = useQuotes();
+  const { quotes, loading, isInitialLoad, error, createQuote, updateQuoteStatus, deleteQuote, fetchQuotes } = useQuotes();
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -727,7 +727,11 @@ export default function QuotingModule({ profileLoading, profile, isAdmin, isBure
           setShowEditModal(false);
           setSelectedQuote(null);
         }}
-        onSaved={() => {
+        onSaved={async () => {
+          // Attendre un instant pour laisser Realtime se synchroniser
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Forcer un refresh pour être sûr d'avoir les bonnes valeurs
+          await fetchQuotes(true);
           setShowEditModal(false);
           setSelectedQuote(null);
         }}

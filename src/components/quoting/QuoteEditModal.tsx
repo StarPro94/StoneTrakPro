@@ -14,7 +14,7 @@ interface QuoteEditModalProps {
 }
 
 export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: QuoteEditModalProps) {
-  const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem, recalculateQuoteTotals, fetchQuotes } = useQuotes();
+  const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem, recalculateQuoteTotals } = useQuotes();
   const { clients, findClientByCompany, saveOrUpdateClient } = useClients();
 
   // États du formulaire
@@ -284,9 +284,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         // Maintenant, on recalcule les totaux UNE SEULE FOIS à la fin
         await recalculateQuoteTotals(quote.id);
 
-        // Rafraîchir la liste des devis pour afficher les nouveaux totaux
-        await fetchQuotes(true);
-
+        // Le composant parent (QuotingModule) s'occupe du refresh
         onSaved();
         onClose();
       }
