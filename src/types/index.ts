@@ -351,9 +351,21 @@ export interface Material {
   thickness: number | null;
   isActive: boolean;
   description: string | null;
-  ref?: string;
+  ref: string;
+  cmup: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface MaterialCMUPHistory {
+  id: string;
+  materialId: string;
+  oldCmup: number | null;
+  newCmup: number | null;
+  changedAt: Date;
+  changedBy: string | null;
+  source: 'import' | 'manual' | 'system';
+  notes: string | null;
 }
 
 export interface Block {

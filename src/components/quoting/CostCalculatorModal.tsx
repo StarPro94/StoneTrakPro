@@ -14,8 +14,9 @@ interface CostCalculatorModalProps {
 }
 
 export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, defaultMethod = 'slab', editingItem = null }: CostCalculatorModalProps) {
-  const { blocMaterialNames, trancheMaterialNames } = useMaterials();
+  const { blocMaterialNames, trancheMaterialNames, getMaterialByName, getMaterialCMUP } = useMaterials();
   const [activeTab, setActiveTab] = useState<CalculationMethod>(defaultMethod);
+  const [cmupSuggested, setCmupSuggested] = useState(false);
 
   // États communs
   const [materialName, setMaterialName] = useState('');
@@ -89,6 +90,7 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setLaborCost(editingItem.laborCost);
       setConsumablesCost(editingItem.consumablesCost);
       setOverheadCoefficient(editingItem.overheadCoefficient || 1.23);
+      setCmupSuggested(false);
 
       if (editingItem.calculationMethod === 'block') {
         setBlockPriceM3(editingItem.sourcePrice || 0);
@@ -118,8 +120,25 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
       setOverheadCoefficient(1.23);
       setWasteFactor(getSuggestedWasteFactor(activeTab));
       setMarginCoefficient(getSuggestedMargin(activeTab));
+      setCmupSuggested(false);
     }
   }, [editingItem, isOpen]);
+
+  // Auto-remplir avec le CMUP quand la matière change
+  useEffect(() => {
+    if (!materialName || editingItem) return;
+
+    const cmup = getMaterialCMUP(materialName);
+    if (cmup && cmup > 0) {
+      if (activeTab === 'block' && blockPriceM3 === 0) {
+        setBlockPriceM3(cmup);
+        setCmupSuggested(true);
+      } else if (activeTab === 'slab' && slabPriceM2 === 0) {
+        setSlabPriceM2(cmup);
+        setCmupSuggested(true);
+      }
+    }
+  }, [materialName, activeTab]);
 
   const calculatePrice = () => {
     try {
@@ -346,17 +365,34 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prix d'achat du bloc (€/m³)
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                      <span>Prix d'achat du bloc (€/m³ HT)</span>
+                      {cmupSuggested && blockPriceM3 > 0 && (
+                        <span className="text-xs text-blue-600 font-normal flex items-center space-x-1">
+                          <Info className="h-3 w-3" />
+                          <span>CMUP suggéré</span>
+                        </span>
+                      )}
                     </label>
                     <input
                       type="number"
                       value={blockPriceM3}
-                      onChange={(e) => setBlockPriceM3(Number(e.target.value))}
+                      onChange={(e) => {
+                        setBlockPriceM3(Number(e.target.value));
+                        setCmupSuggested(false);
+                      }}
                       min="0"
                       step="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        cmupSuggested ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
+                      }`}
+                      title={cmupSuggested ? `Prix suggéré d'après le CMUP (coût moyen d'achat HT). Vous pouvez le modifier selon vos marges.` : ''}
                     />
+                    {cmupSuggested && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Prix pré-rempli avec le CMUP. Modifiable à tout moment.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -405,17 +441,34 @@ export default function CostCalculatorModal({ isOpen, onClose, onAddToQuote, def
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prix d'achat de la tranche (€/m²)
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                      <span>Prix d'achat de la tranche (€/m² HT)</span>
+                      {cmupSuggested && slabPriceM2 > 0 && (
+                        <span className="text-xs text-blue-600 font-normal flex items-center space-x-1">
+                          <Info className="h-3 w-3" />
+                          <span>CMUP suggéré</span>
+                        </span>
+                      )}
                     </label>
                     <input
                       type="number"
                       value={slabPriceM2}
-                      onChange={(e) => setSlabPriceM2(Number(e.target.value))}
+                      onChange={(e) => {
+                        setSlabPriceM2(Number(e.target.value));
+                        setCmupSuggested(false);
+                      }}
                       min="0"
                       step="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        cmupSuggested ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
+                      }`}
+                      title={cmupSuggested ? `Prix suggéré d'après le CMUP (coût moyen d'achat HT). Vous pouvez le modifier selon vos marges.` : ''}
                     />
+                    {cmupSuggested && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Prix pré-rempli avec le CMUP. Modifiable à tout moment.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -3,9 +3,62 @@ import * as XLSX from 'xlsx';
 export interface XLSMaterialRow {
   ref: string;
   matiere: string;
+  stock?: number;
+  aTerMe?: number;
+  cmup: number | null;
 }
 
-export async function parseXLSFile(file: File): Promise<XLSMaterialRow[]> {
+export interface XLSParseResult {
+  materials: XLSMaterialRow[];
+  stats: {
+    totalProcessed: number;
+    withCMUP: number;
+    rejected: number;
+  };
+}
+
+function parseCMUPValue(value: any): number | null {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  let numValue: number;
+
+  if (typeof value === 'string') {
+    const cleanValue = value.replace(/,/g, '.').trim();
+    numValue = parseFloat(cleanValue);
+  } else if (typeof value === 'number') {
+    numValue = value;
+  } else {
+    return null;
+  }
+
+  if (isNaN(numValue) || numValue < 0) {
+    return null;
+  }
+
+  if (numValue === 0) {
+    return null;
+  }
+
+  return Math.round(numValue * 1000) / 1000;
+}
+
+function parseNumericValue(value: any): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, '.'));
+
+  if (isNaN(numValue)) {
+    return undefined;
+  }
+
+  return numValue;
+}
+
+export async function parseXLSFile(file: File): Promise<XLSParseResult> {
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
@@ -30,12 +83,29 @@ export async function parseXLSFile(file: File): Promise<XLSMaterialRow[]> {
   const matiereIndex = headers.findIndex(h =>
     h === 'matière' || h === 'matiere' || h === 'material'
   );
+  const stockIndex = headers.findIndex(h =>
+    h === 'stock'
+  );
+  const aTerMeIndex = headers.findIndex(h =>
+    h === 'à terme' || h === 'a terme' || h === 'aterme'
+  );
+  const cmupIndex = headers.findIndex(h =>
+    h === 'cmup'
+  );
 
-  if (refIndex === -1 || matiereIndex === -1) {
-    throw new Error('Le fichier doit contenir les colonnes "Ref" et "Matière"');
+  if (refIndex === -1) {
+    throw new Error('Le fichier doit contenir la colonne "Ref"');
+  }
+  if (matiereIndex === -1) {
+    throw new Error('Le fichier doit contenir la colonne "Matière"');
+  }
+  if (cmupIndex === -1) {
+    throw new Error('Le fichier doit contenir la colonne "CMUP"');
   }
 
   const materials: XLSMaterialRow[] = [];
+  let rejectedCount = 0;
+  let cmupCount = 0;
 
   for (let i = 1; i < jsonData.length; i++) {
     const row = jsonData[i] as any[];
@@ -43,16 +113,41 @@ export async function parseXLSFile(file: File): Promise<XLSMaterialRow[]> {
     const ref = String(row[refIndex] || '').trim();
     const matiere = String(row[matiereIndex] || '').trim();
 
-    if (ref && matiere) {
-      materials.push({ ref, matiere });
+    if (!ref || !matiere) {
+      rejectedCount++;
+      console.warn(`Ligne ${i + 1} ignorée: ref ou matière manquante`);
+      continue;
     }
+
+    const stock = stockIndex !== -1 ? parseNumericValue(row[stockIndex]) : undefined;
+    const aTerMe = aTerMeIndex !== -1 ? parseNumericValue(row[aTerMeIndex]) : undefined;
+    const cmup = parseCMUPValue(row[cmupIndex]);
+
+    if (cmup !== null) {
+      cmupCount++;
+    }
+
+    materials.push({
+      ref,
+      matiere,
+      stock,
+      aTerMe,
+      cmup
+    });
   }
 
   if (materials.length === 0) {
     throw new Error('Aucune matière valide trouvée dans le fichier');
   }
 
-  return materials;
+  return {
+    materials,
+    stats: {
+      totalProcessed: materials.length,
+      withCMUP: cmupCount,
+      rejected: rejectedCount
+    }
+  };
 }
 
 export function detectMaterialTypeFromName(name: string): 'tranche' | 'bloc' | 'both' {

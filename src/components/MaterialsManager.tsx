@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Edit2, Trash2, Save, X, Package, Search } from 'lucide-react';
+import { Plus, Upload, Edit2, Trash2, Save, X, Package, Search, Clock } from 'lucide-react';
 import { useMaterials } from '../hooks/useMaterials';
 import { Material } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -18,6 +18,8 @@ export default function MaterialsManager() {
     type: 'tranche' as 'tranche' | 'bloc',
     thickness: '',
     description: '',
+    ref: '',
+    cmup: '',
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
@@ -33,6 +35,8 @@ export default function MaterialsManager() {
       type: material.type,
       thickness: material.thickness?.toString() || '',
       description: material.description || '',
+      ref: material.ref,
+      cmup: material.cmup?.toString() || '',
     });
   };
 
@@ -44,10 +48,21 @@ export default function MaterialsManager() {
       type: 'tranche',
       thickness: '',
       description: '',
+      ref: '',
+      cmup: '',
     });
   };
 
   const handleSave = async () => {
+    if (!formData.ref.trim()) {
+      addToast({
+        type: 'error',
+        title: 'Erreur de validation',
+        message: 'La référence est obligatoire',
+      });
+      return;
+    }
+
     try {
       if (editingId) {
         const material = materials.find(m => m.id === editingId);
@@ -59,6 +74,8 @@ export default function MaterialsManager() {
           type: formData.type,
           thickness: formData.thickness ? parseInt(formData.thickness) : null,
           description: formData.description || null,
+          ref: formData.ref,
+          cmup: formData.cmup ? parseFloat(formData.cmup) : null,
         });
 
         addToast({
@@ -73,6 +90,8 @@ export default function MaterialsManager() {
           thickness: formData.thickness ? parseInt(formData.thickness) : null,
           isActive: true,
           description: formData.description || null,
+          ref: formData.ref,
+          cmup: formData.cmup ? parseFloat(formData.cmup) : null,
         });
 
         addToast({
@@ -156,10 +175,16 @@ export default function MaterialsManager() {
       const result = await importMaterialsFromXLS(file);
 
       if (result) {
+        const parts = [];
+        if (result.addedCount > 0) parts.push(`${result.addedCount} ajoutée(s)`);
+        if (result.updatedCount > 0) parts.push(`${result.updatedCount} mise(s) à jour`);
+        if (result.cmupCount > 0) parts.push(`${result.cmupCount} CMUP importé(s)`);
+        if (result.rejected > 0) parts.push(`${result.rejected} ligne(s) ignorée(s)`);
+
         addToast({
           type: 'success',
           title: 'Import réussi',
-          message: `${result.addedCount} matière(s) ajoutée(s), ${result.skippedCount} déjà existante(s)`,
+          message: parts.join(', '),
         });
       }
 
@@ -347,9 +372,11 @@ export default function MaterialsManager() {
         <table className="w-full">
           <thead className="bg-gray-100">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ref</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nom</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Épaisseur</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">CMUP (HT)</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Description</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
             </tr>
@@ -360,10 +387,20 @@ export default function MaterialsManager() {
                 <td className="px-6 py-3">
                   <input
                     type="text"
+                    value={formData.ref}
+                    onChange={(e) => setFormData({ ...formData, ref: e.target.value })}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                    placeholder="Ex: 3174 *"
+                    required
+                  />
+                </td>
+                <td className="px-6 py-3">
+                  <input
+                    type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-2 py-1 border rounded text-sm"
-                    placeholder="Ex: K3, Q, PBQ"
+                    placeholder="Ex: AKRON DEBUT"
                   />
                 </td>
                 <td className="px-6 py-3">
@@ -383,6 +420,16 @@ export default function MaterialsManager() {
                     onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
                     className="w-full px-2 py-1 border rounded text-sm"
                     placeholder="Ex: 3"
+                  />
+                </td>
+                <td className="px-6 py-3">
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={formData.cmup}
+                    onChange={(e) => setFormData({ ...formData, cmup: e.target.value })}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                    placeholder="Ex: 525.50"
                   />
                 </td>
                 <td className="px-6 py-3">
@@ -414,6 +461,15 @@ export default function MaterialsManager() {
                     <td className="px-6 py-3">
                       <input
                         type="text"
+                        value={formData.ref}
+                        onChange={(e) => setFormData({ ...formData, ref: e.target.value })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                        required
+                      />
+                    </td>
+                    <td className="px-6 py-3">
+                      <input
+                        type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-2 py-1 border rounded text-sm"
@@ -439,6 +495,15 @@ export default function MaterialsManager() {
                     </td>
                     <td className="px-6 py-3">
                       <input
+                        type="number"
+                        step="0.001"
+                        value={formData.cmup}
+                        onChange={(e) => setFormData({ ...formData, cmup: e.target.value })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </td>
+                    <td className="px-6 py-3">
+                      <input
                         type="text"
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -458,16 +523,29 @@ export default function MaterialsManager() {
                   </>
                 ) : (
                   <>
+                    <td className="px-6 py-3 text-sm font-medium text-gray-700">{material.ref}</td>
                     <td className="px-6 py-3 text-sm font-medium text-gray-900">{material.name}</td>
                     <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        material.type === 'tranche' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                        material.type === 'tranche' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
                       }`}>
                         {material.type === 'tranche' ? 'Tranche' : 'Bloc'}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">
                       {material.thickness ? `${material.thickness} cm` : '-'}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-900">
+                      {material.cmup ? (
+                        <span className="font-medium">
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(material.cmup)}
+                          <span className="text-gray-500 text-xs ml-1">
+                            {material.type === 'tranche' ? '/m²' : material.type === 'bloc' ? '/m³' : ''} HT
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">{material.description || '-'}</td>
                     <td className="px-6 py-3">
@@ -495,7 +573,7 @@ export default function MaterialsManager() {
 
             {filteredMaterials.length === 0 && materials.length > 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <p className="text-gray-500">Aucune matière ne correspond à votre recherche</p>
                   <button
@@ -514,7 +592,7 @@ export default function MaterialsManager() {
 
             {materials.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <p className="text-gray-500">Aucune matière enregistrée</p>
                   <p className="text-gray-400 text-sm mt-2">Ajoutez votre première matière pour commencer</p>

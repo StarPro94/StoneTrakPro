@@ -76,6 +76,7 @@ export function useMaterials() {
           createdAt: new Date(m.created_at),
           updatedAt: new Date(m.updated_at),
           ref: m.ref,
+          cmup: m.cmup,
         }))
       );
     } catch (err: any) {
@@ -103,6 +104,8 @@ export function useMaterials() {
           thickness: material.thickness,
           is_active: material.isActive,
           description: material.description,
+          ref: material.ref,
+          cmup: material.cmup,
         });
 
       if (insertError) throw insertError;
@@ -132,6 +135,8 @@ export function useMaterials() {
           thickness: material.thickness,
           is_active: material.isActive,
           description: material.description,
+          ref: material.ref,
+          cmup: material.cmup,
         })
         .eq('id', material.id);
 
@@ -229,7 +234,8 @@ export function useMaterials() {
     try {
       setError(null);
 
-      const parsedMaterials = await parseXLSFile(file);
+      const parseResult = await parseXLSFile(file);
+      const parsedMaterials = parseResult.materials;
 
       const fetchBatchSize = 1000;
       let allExistingMaterials: any[] = [];
@@ -265,16 +271,12 @@ export function useMaterials() {
       );
 
       const materialsToInsert = [];
+      const materialsToUpdate = [];
       let skippedCount = 0;
 
       for (const material of parsedMaterials) {
         const nameExists = existingNames.has(material.matiere.toLowerCase());
         const refExists = existingRefs.has(material.ref.toLowerCase());
-
-        if (nameExists || refExists) {
-          skippedCount++;
-          continue;
-        }
 
         const detectedType = detectMaterialTypeFromName(material.matiere);
         let materialType: 'tranche' | 'bloc' = 'tranche';
@@ -290,17 +292,25 @@ export function useMaterials() {
         const thicknessMatch = material.matiere.match(/K(\d+)/);
         const thickness = thicknessMatch ? parseInt(thicknessMatch[1]) : null;
 
-        materialsToInsert.push({
+        const materialData = {
           ref: material.ref,
           name: material.matiere,
           type: materialType,
           thickness: thickness,
           is_active: true,
           description: null,
-        });
+          cmup: material.cmup,
+        };
+
+        if (nameExists || refExists) {
+          materialsToUpdate.push(materialData);
+        } else {
+          materialsToInsert.push(materialData);
+        }
       }
 
       let addedCount = 0;
+      let updatedCount = 0;
 
       const insertBatchSize = 500;
       for (let i = 0; i < materialsToInsert.length; i += insertBatchSize) {
@@ -316,12 +326,25 @@ export function useMaterials() {
         }
       }
 
+      for (const material of materialsToUpdate) {
+        const { error: updateError } = await supabase!
+          .from('materials')
+          .update({ cmup: material.cmup })
+          .or(`name.eq.${material.name},ref.eq.${material.ref}`);
+
+        if (!updateError) {
+          updatedCount++;
+        }
+      }
+
       await fetchMaterials();
 
       return {
         addedCount,
-        skippedCount,
+        updatedCount,
+        cmupCount: parseResult.stats.withCMUP,
         totalProcessed: parsedMaterials.length,
+        rejected: parseResult.stats.rejected,
       };
     } catch (err: any) {
       setError(err.message);
@@ -355,6 +378,15 @@ export function useMaterials() {
     }
   }, [user]);
 
+  const getMaterialByName = (name: string): Material | undefined => {
+    return materials.find(m => m.name.toLowerCase() === name.toLowerCase());
+  };
+
+  const getMaterialCMUP = (materialName: string): number | null => {
+    const material = getMaterialByName(materialName);
+    return material?.cmup ?? null;
+  };
+
   const trancheMaterials = materials.filter(m => (m.type === 'tranche' || m.type === 'both') && m.isActive);
   const blocMaterials = materials.filter(m => (m.type === 'bloc' || m.type === 'both') && m.isActive);
   const trancheMaterialNames = trancheMaterials.map(m => m.name);
@@ -376,5 +408,7 @@ export function useMaterials() {
     importMaterialsFromCSV,
     importMaterialsFromXLS,
     refetch: fetchMaterials,
+    getMaterialByName,
+    getMaterialCMUP,
   };
 }
