@@ -190,35 +190,50 @@ export function useQuotes() {
 
       if (insertError) throw insertError;
 
-      // Mapper le devis créé
+      // Récupérer immédiatement le devis avec ses items depuis la DB
+      const { data: fullQuoteData, error: fetchError } = await supabase!
+        .from('quotes')
+        .select(`
+          *,
+          items:quote_items(*)
+        `)
+        .eq('id', data.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Mapper le devis complet
       const newQuote: Quote = {
-        id: data.id,
-        quoteReference: data.quote_reference,
-        clientCompany: data.client_company,
-        clientContactName: data.client_contact_name,
-        clientAddress: data.client_address,
-        clientPhone: data.client_phone,
-        clientEmail: data.client_email,
-        siteName: data.site_name,
-        quoteDate: new Date(data.quote_date),
-        estimatedDelay: data.estimated_delay,
-        status: data.status as QuoteStatus,
-        osNumber: data.os_number,
-        subtotalHt: Number(data.subtotal_ht),
-        discountPercent: Number(data.discount_percent),
-        discountAmount: Number(data.discount_amount),
-        totalHt: Number(data.total_ht),
-        tvaPercent: Number(data.tva_percent),
-        totalTva: Number(data.total_tva),
-        totalTtc: Number(data.total_ttc),
-        notes: data.notes,
-        createdBy: data.created_by,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        items: []
+        id: fullQuoteData.id,
+        quoteReference: fullQuoteData.quote_reference,
+        clientCompany: fullQuoteData.client_company,
+        clientContactName: fullQuoteData.client_contact_name,
+        clientAddress: fullQuoteData.client_address,
+        clientPhone: fullQuoteData.client_phone,
+        clientEmail: fullQuoteData.client_email,
+        siteName: fullQuoteData.site_name,
+        quoteDate: new Date(fullQuoteData.quote_date),
+        estimatedDelay: fullQuoteData.estimated_delay,
+        status: fullQuoteData.status as QuoteStatus,
+        osNumber: fullQuoteData.os_number,
+        commercial: fullQuoteData.commercial,
+        subtotalHt: Number(fullQuoteData.subtotal_ht),
+        discountPercent: Number(fullQuoteData.discount_percent),
+        discountAmount: Number(fullQuoteData.discount_amount),
+        totalHt: Number(fullQuoteData.total_ht),
+        tvaPercent: Number(fullQuoteData.tva_percent),
+        totalTva: Number(fullQuoteData.total_tva),
+        totalTtc: Number(fullQuoteData.total_ttc),
+        notes: fullQuoteData.notes,
+        createdBy: fullQuoteData.created_by,
+        createdAt: new Date(fullQuoteData.created_at),
+        updatedAt: new Date(fullQuoteData.updated_at),
+        items: fullQuoteData.items?.map((item: any) => mapQuoteItem(item)) || []
       };
 
-      await fetchQuotes(true);
+      // Refresh la liste des devis en arrière-plan
+      fetchQuotes(true);
+
       return newQuote;
     } catch (err: any) {
       setError(err.message);
