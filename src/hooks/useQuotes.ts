@@ -312,7 +312,7 @@ export function useQuotes() {
     }
   };
 
-  const addQuoteItem = async (item: Omit<QuoteItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
+  const addQuoteItem = async (item: Omit<QuoteItem, 'id' | 'createdAt' | 'updatedAt'>, skipRecalculate = false): Promise<boolean> => {
     if (!user || !isSupabaseConfigured()) {
       setError('Utilisateur non authentifié ou configuration manquante');
       return false;
@@ -348,9 +348,11 @@ export function useQuotes() {
 
       if (insertError) throw insertError;
 
-      // Recalculer les totaux du devis
-      await recalculateQuoteTotals(item.quoteId);
-      await fetchQuotes(true);
+      // Recalculer les totaux du devis (sauf si skipRecalculate est true)
+      if (!skipRecalculate) {
+        await recalculateQuoteTotals(item.quoteId);
+        await fetchQuotes(true);
+      }
       return true;
     } catch (err: any) {
       setError(err.message);
@@ -359,7 +361,7 @@ export function useQuotes() {
     }
   };
 
-  const updateQuoteItem = async (item: QuoteItem): Promise<boolean> => {
+  const updateQuoteItem = async (item: QuoteItem, skipRecalculate = false): Promise<boolean> => {
     if (!user || !isSupabaseConfigured()) {
       setError('Utilisateur non authentifié ou configuration manquante');
       return false;
@@ -395,8 +397,11 @@ export function useQuotes() {
 
       if (updateError) throw updateError;
 
-      await recalculateQuoteTotals(item.quoteId);
-      await fetchQuotes(true);
+      // Recalculer les totaux du devis (sauf si skipRecalculate est true)
+      if (!skipRecalculate) {
+        await recalculateQuoteTotals(item.quoteId);
+        await fetchQuotes(true);
+      }
       return true;
     } catch (err: any) {
       setError(err.message);

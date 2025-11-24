@@ -14,7 +14,7 @@ interface QuoteEditModalProps {
 }
 
 export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: QuoteEditModalProps) {
-  const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem } = useQuotes();
+  const { updateQuote, addQuoteItem, updateQuoteItem, deleteQuoteItem, recalculateQuoteTotals, fetchQuotes } = useQuotes();
   const { clients, findClientByCompany, saveOrUpdateClient } = useClients();
 
   // États du formulaire
@@ -241,7 +241,7 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         });
       }
 
-      // Mettre à jour le devis principal
+      // Mettre à jour le devis principal (SANS les totaux pour l'instant)
       const updatedQuote: Quote = {
         ...quote,
         clientCompany,
@@ -258,27 +258,34 @@ export default function QuoteEditModal({ quote, isOpen, onClose, onSaved }: Quot
         discountPercent,
         tvaPercent,
         notes: notes || null,
-        subtotalHt: totals.subtotalHt,
-        discountAmount: totals.discountAmount,
-        totalHt: totals.totalHt,
-        totalTva: totals.totalTva,
-        totalTtc: totals.totalTtc
+        // On garde les totaux existants pour l'instant
+        subtotalHt: quote.subtotalHt,
+        discountAmount: quote.discountAmount,
+        totalHt: quote.totalHt,
+        totalTva: quote.totalTva,
+        totalTtc: quote.totalTtc
       };
 
       const success = await updateQuote(updatedQuote);
 
       if (success) {
-        // Sauvegarder les nouveaux items
+        // Sauvegarder les nouveaux items (SANS recalcul automatique pour chaque item)
         for (const item of items) {
           if (item.id.startsWith('temp-')) {
             await addQuoteItem({
               ...item,
               quoteId: quote.id
-            });
+            }, true); // skipRecalculate = true
           } else {
-            await updateQuoteItem(item);
+            await updateQuoteItem(item, true); // skipRecalculate = true
           }
         }
+
+        // Maintenant, on recalcule les totaux UNE SEULE FOIS à la fin
+        await recalculateQuoteTotals(quote.id);
+
+        // Rafraîchir la liste des devis pour afficher les nouveaux totaux
+        await fetchQuotes(true);
 
         onSaved();
         onClose();
