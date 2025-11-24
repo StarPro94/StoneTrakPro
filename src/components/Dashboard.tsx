@@ -118,7 +118,7 @@ export default function Dashboard({ sheets, onViewSheet }: DashboardProps) {
     return 'text-rose-600';
   };
 
-  const today = format(new Date(), 'dQ MMMM yyyy', { locale: fr });
+  const today = format(new Date(), 'd MMMM yyyy', { locale: fr });
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 lg:p-10 font-sans text-slate-900">
