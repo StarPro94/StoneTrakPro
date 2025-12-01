@@ -1,5 +1,5 @@
-import React from 'react';
-import { Edit2, Trash2, Package, CheckCircle, Plus, Minus, Move } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit2, Trash2, Package, CheckCircle, Plus, Minus, Move, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Slab } from '../types';
 
 interface SlabTableProps {
@@ -15,7 +15,22 @@ interface SlabTableProps {
 }
 
 export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition = true, onAssign, onUnassign, enableDragDrop = false }: SlabTableProps) {
-  const [draggedSlab, setDraggedSlab] = React.useState<string | null>(null);
+  const [draggedSlab, setDraggedSlab] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [slabs.length]);
+
+  const totalPages = Math.ceil(slabs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const displayedSlabs = slabs.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
 
   const formatDimensions = (length: number, width: number, thickness: number) => {
     return `${length} × ${width} × ${thickness} cm`;
@@ -80,7 +95,7 @@ export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {slabs.map((slab) => (
+              {displayedSlabs.map((slab) => (
                 <tr 
                   key={slab.id}
                   className={`transition-colors ${
@@ -184,6 +199,59 @@ export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {slabs.length > itemsPerPage && (
+        <div className="bg-gray-50 px-4 py-3 border-t flex items-center justify-between">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Précédent
+            </button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Suivant
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Affichage de <span className="font-medium">{startIndex + 1}</span> à{' '}
+                <span className="font-medium">{Math.min(endIndex, slabs.length)}</span> sur{' '}
+                <span className="font-medium">{slabs.length}</span> tranche{slabs.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Précédent</span>
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Suivant</span>
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       )}
     </div>

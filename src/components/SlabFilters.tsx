@@ -11,7 +11,7 @@ interface SlabFiltersProps {
   availableMaterials?: string[];
 }
 
-export default function SlabFilters({ filters, onFiltersChange, onReset, availableMaterials = [] }: SlabFiltersProps) {
+const SlabFilters = React.memo(function SlabFilters({ filters, onFiltersChange, onReset, availableMaterials = [] }: SlabFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Utiliser les matériaux disponibles s'ils sont fournis, sinon afficher un message
@@ -258,4 +258,6 @@ export default function SlabFilters({ filters, onFiltersChange, onReset, availab
       )}
     </div>
   );
-}
+});
+
+export default SlabFilters;

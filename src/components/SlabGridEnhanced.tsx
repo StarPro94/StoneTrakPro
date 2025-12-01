@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Slab } from '../types';
 import { getMaterialColor } from '../utils/materialColors';
 import { formatDimensions, getSlabAgeDays } from '../utils/slabCalculations';
@@ -12,7 +12,7 @@ interface SlabGridEnhancedProps {
   onSlabClick?: (slab: Slab) => void;
 }
 
-export default function SlabGridEnhanced({
+const SlabGridEnhanced = React.memo(function SlabGridEnhanced({
   slabs,
   selectedPosition,
   onPositionSelect,
@@ -23,13 +23,15 @@ export default function SlabGridEnhanced({
   const [modalPosition, setModalPosition] = useState<string>('');
   const [modalSlabs, setModalSlabs] = useState<Slab[]>([]);
 
-  const slabsByPosition = slabs.reduce((acc, slab) => {
-    if (!acc[slab.position]) {
-      acc[slab.position] = [];
-    }
-    acc[slab.position].push(slab);
-    return acc;
-  }, {} as Record<string, Slab[]>);
+  const slabsByPosition = useMemo(() => {
+    return slabs.reduce((acc, slab) => {
+      if (!acc[slab.position]) {
+        acc[slab.position] = [];
+      }
+      acc[slab.position].push(slab);
+      return acc;
+    }, {} as Record<string, Slab[]>);
+  }, [slabs]);
 
   const getPositionSlabs = (position: string): Slab[] => {
     return slabsByPosition[position] || [];
@@ -50,50 +52,37 @@ export default function SlabGridEnhanced({
             </span>
           </div>
 
-          {positionSlabs.slice(0, 3).map((slab, idx) => {
+          {positionSlabs.slice(0, 2).map((slab, idx) => {
             const materialColor = getMaterialColor(slab.material);
-            const ageDays = getSlabAgeDays(slab.createdAt);
 
             return (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border-2 ${materialColor.border} ${materialColor.bg}`}
+                className={`p-2 rounded-lg border ${materialColor.border} ${materialColor.bg}`}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <span className={`text-xs font-bold ${materialColor.text}`}>
+                <div className="flex items-start justify-between mb-1">
+                  <span className={`text-xs font-bold ${materialColor.text} truncate`}>
                     {slab.material}
                   </span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      slab.status === 'dispo'
-                        ? 'bg-green-200 text-green-800'
-                        : 'bg-orange-200 text-orange-800'
-                    }`}
-                  >
-                    {slab.status === 'dispo' ? 'Dispo' : 'Réservé'}
-                  </span>
+                  {slab.quantity > 1 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-blue-200 text-blue-800 ml-1">
+                      ×{slab.quantity}
+                    </span>
+                  )}
                 </div>
 
-                <div className="text-xs space-y-1">
-                  <p className="font-mono text-gray-700">
+                <div className="text-xs">
+                  <p className="font-mono text-gray-700 text-xs">
                     {formatDimensions(slab.length, slab.width, slab.thickness)}
                   </p>
-                  {slab.numeroOS && (
-                    <p className="text-blue-600 font-medium">OS: {slab.numeroOS}</p>
-                  )}
-                  {ageDays > 30 && (
-                    <p className="text-orange-600 font-medium">
-                      Stock: {ageDays}j
-                    </p>
-                  )}
                 </div>
               </div>
             );
           })}
 
-          {positionSlabs.length > 3 && (
-            <p className="text-xs text-gray-500 text-center">
-              +{positionSlabs.length - 3} autre{positionSlabs.length - 3 > 1 ? 's' : ''}...
+          {positionSlabs.length > 2 && (
+            <p className="text-xs text-gray-500 text-center font-medium">
+              +{positionSlabs.length - 2} autre{positionSlabs.length - 2 > 1 ? 's' : ''}... (cliquer pour voir)
             </p>
           )}
         </div>
@@ -231,4 +220,6 @@ export default function SlabGridEnhanced({
       />
     </div>
   );
-}
+});
+
+export default SlabGridEnhanced;

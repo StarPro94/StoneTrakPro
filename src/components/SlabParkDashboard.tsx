@@ -3,7 +3,7 @@ import { Package, CheckCircle, AlertCircle, Grid3x3, Layers, TrendingUp, AlertTr
 import { useSlabStatistics } from '../hooks/useSlabStatistics';
 import { formatCurrency, formatArea, formatVolume } from '../utils/slabCalculations';
 
-export default function SlabParkDashboard() {
+const SlabParkDashboard = React.memo(function SlabParkDashboard() {
   const { statistics, loading, occupationRate, availabilityRate } = useSlabStatistics();
 
   if (loading) {
@@ -167,4 +167,6 @@ export default function SlabParkDashboard() {
       )}
     </div>
   );
-}
+});
+
+export default SlabParkDashboard;

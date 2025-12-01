@@ -194,34 +194,59 @@ export function useSlabs() {
 
       const { data: materialsData } = await supabase
         .from('materials')
-        .select('name, ref');
+        .select('id, name, ref, type');
 
-      const materialMap = new Map<string, string>();
+      const refToMaterial = new Map<string, { id: string; name: string; type: string }>();
       (materialsData || []).forEach((m: any) => {
-        materialMap.set(m.name.toLowerCase(), m.ref);
+        refToMaterial.set(m.ref.toLowerCase(), { id: m.id, name: m.name, type: m.type });
       });
 
       const slabsToInsert = [];
       const errors: string[] = [];
+      const createdMaterials = new Set<string>();
 
       for (const parsedSlab of parseResult.slabs) {
-        const materialLower = parsedSlab.material.toLowerCase();
-        const materialRef = materialMap.get(materialLower);
+        const refLower = parsedSlab.ref.toLowerCase();
+        let material = refToMaterial.get(refLower);
 
-        if (!materialRef) {
-          errors.push(`Matière "${parsedSlab.material}" non trouvée dans la liste`);
-          continue;
-        }
+        if (!material) {
+          if (!createdMaterials.has(refLower)) {
+            const materialType = /\bK\d+/i.test(parsedSlab.material) ? 'tranche' : 'bloc';
+            const thicknessMatch = parsedSlab.material.match(/K(\d+)/i);
+            const thickness = thicknessMatch ? parseInt(thicknessMatch[1]) : null;
 
-        if (materialRef.toLowerCase() !== parsedSlab.ref.toLowerCase()) {
-          errors.push(`Référence incorrecte pour "${parsedSlab.material}": attendu ${materialRef}, reçu ${parsedSlab.ref}`);
-          continue;
+            const newMaterial = {
+              ref: parsedSlab.ref,
+              name: parsedSlab.material,
+              type: materialType,
+              thickness: thickness,
+              is_active: true,
+              cmup: null,
+            };
+
+            const { data: created, error: createError } = await supabase
+              .from('materials')
+              .insert(newMaterial)
+              .select()
+              .single();
+
+            if (createError) {
+              errors.push(`Erreur lors de la création de la matière "${parsedSlab.material}" (${parsedSlab.ref}): ${createError.message}`);
+              continue;
+            }
+
+            material = { id: created.id, name: created.name, type: created.type };
+            refToMaterial.set(refLower, material);
+            createdMaterials.add(refLower);
+          } else {
+            material = refToMaterial.get(refLower);
+          }
         }
 
         slabsToInsert.push({
           user_id: user.id,
           position: parsedSlab.position,
-          material: parsedSlab.material,
+          material: material!.name,
           length: parsedSlab.length,
           width: parsedSlab.width,
           thickness: parsedSlab.thickness,

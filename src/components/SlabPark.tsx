@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Plus, Search as SearchIcon, Filter, Layers, Box, Upload, Download } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Plus, Search as SearchIcon, Filter, Layers, Box, Upload, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSlabs } from '../hooks/useSlabs';
 import { useDebitSheets } from '../hooks/useDebitSheets';
 import { useMaterials } from '../hooks/useMaterials';
@@ -51,6 +51,18 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
   const [isExporting, setIsExporting] = useState(false);
   const [showImportResult, setShowImportResult] = useState(false);
   const [importResult, setImportResult] = useState<{ added: number; errors: string[] }>({ added: 0, errors: [] });
+  const [showMaterialsSection, setShowMaterialsSection] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('showMaterialsSection');
+    if (saved !== null) {
+      setShowMaterialsSection(JSON.parse(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('showMaterialsSection', JSON.stringify(showMaterialsSection));
+  }, [showMaterialsSection]);
 
   // Extraire les matériaux uniques depuis les tranches en stock
   const availableMaterials = useMemo(() => {
@@ -315,6 +327,47 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
           ) : (
             <>
           <SlabParkDashboard />
+
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            <button
+              onClick={() => setShowMaterialsSection(!showMaterialsSection)}
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <Layers className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Matériaux en stock
+                </h3>
+                <span className="text-sm text-gray-500">({availableMaterials.length})</span>
+              </div>
+              {showMaterialsSection ? (
+                <ChevronUp className="h-5 w-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-gray-400" />
+              )}
+            </button>
+
+            {showMaterialsSection && (
+              <div className="px-6 py-4 border-t bg-gray-50">
+                <div className="flex flex-wrap gap-2">
+                  {availableMaterials.map((material) => (
+                    <span
+                      key={material}
+                      className="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                    >
+                      {material}
+                    </span>
+                  ))}
+                </div>
+                {availableMaterials.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Aucun matériau en stock
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between items-center">
           <div className="flex space-x-3">
             {canManageSlabs && (
