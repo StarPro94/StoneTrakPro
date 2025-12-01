@@ -232,33 +232,53 @@ export function useSlabs() {
 
         if (!material) {
           if (!createdMaterials.has(refLower)) {
-            const materialType = /\bK\d+/i.test(parsedSlab.material) ? 'tranche' : 'bloc';
-            const thicknessMatch = parsedSlab.material.match(/K(\d+)/i);
-            const thickness = thicknessMatch ? parseInt(thicknessMatch[1]) : null;
-
-            const newMaterial = {
-              ref: parsedSlab.ref,
-              name: parsedSlab.material,
-              type: materialType,
-              thickness: thickness,
-              is_active: true,
-              cmup: parsedSlab.cmup,
-            };
-
-            const { data: created, error: createError } = await supabase
+            // Material not in our map yet - check database first
+            const { data: existingInDb } = await supabase
               .from('materials')
-              .insert(newMaterial)
-              .select()
-              .single();
+              .select('id, name, type, cmup')
+              .eq('ref', parsedSlab.ref)
+              .maybeSingle();
 
-            if (createError) {
-              errors.push(`Erreur lors de la création de la matière "${parsedSlab.material}" (${parsedSlab.ref}): ${createError.message}`);
-              continue;
+            if (existingInDb) {
+              // Material already exists in database, use it
+              material = {
+                id: existingInDb.id,
+                name: existingInDb.name,
+                type: existingInDb.type,
+                cmup: existingInDb.cmup
+              };
+              refToMaterial.set(refLower, material);
+              createdMaterials.add(refLower);
+            } else {
+              // Material doesn't exist, create it
+              const materialType = /\bK\d+/i.test(parsedSlab.material) ? 'tranche' : 'bloc';
+              const thicknessMatch = parsedSlab.material.match(/K(\d+)/i);
+              const thickness = thicknessMatch ? parseInt(thicknessMatch[1]) : null;
+
+              const newMaterial = {
+                ref: parsedSlab.ref,
+                name: parsedSlab.material,
+                type: materialType,
+                thickness: thickness,
+                is_active: true,
+                cmup: parsedSlab.cmup,
+              };
+
+              const { data: created, error: createError } = await supabase
+                .from('materials')
+                .insert(newMaterial)
+                .select()
+                .single();
+
+              if (createError) {
+                errors.push(`Erreur lors de la création de la matière "${parsedSlab.material}" (${parsedSlab.ref}): ${createError.message}`);
+                continue;
+              }
+
+              material = { id: created.id, name: created.name, type: created.type, cmup: created.cmup };
+              refToMaterial.set(refLower, material);
+              createdMaterials.add(refLower);
             }
-
-            material = { id: created.id, name: created.name, type: created.type, cmup: created.cmup };
-            refToMaterial.set(refLower, material);
-            createdMaterials.add(refLower);
           } else {
             material = refToMaterial.get(refLower);
           }
