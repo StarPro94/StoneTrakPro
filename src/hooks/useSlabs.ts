@@ -198,7 +198,9 @@ export function useSlabs() {
 
       const refToMaterial = new Map<string, { id: string; name: string; type: string; cmup: number | null }>();
       (materialsData || []).forEach((m: any) => {
-        refToMaterial.set(m.ref.toLowerCase(), { id: m.id, name: m.name, type: m.type, cmup: m.cmup });
+        if (m.ref) {
+          refToMaterial.set(m.ref.toLowerCase(), { id: m.id, name: m.name, type: m.type, cmup: m.cmup });
+        }
       });
 
       // Fetch existing slabs by entry_number to detect duplicates
