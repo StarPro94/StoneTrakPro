@@ -56,6 +56,7 @@ export interface Slab {
   length: number;
   width: number;
   thickness: number;
+  quantity: number;
   status: 'dispo' | 'réservé';
   debitSheetId?: string;
   createdAt: Date;

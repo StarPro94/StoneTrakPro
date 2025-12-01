@@ -26,6 +26,7 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
     length: '',
     width: '',
     thickness: '',
+    quantity: '',
     status: 'dispo' as 'dispo' | 'réservé',
     debitSheetId: ''
   });
@@ -38,6 +39,7 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
         length: slab.length.toString(),
         width: slab.width.toString(),
         thickness: slab.thickness.toString(),
+        quantity: slab.quantity.toString(),
         status: slab.status,
         debitSheetId: slab.debitSheetId || ''
       });
@@ -64,9 +66,15 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!slab || !formData.position || !formData.material || !formData.length || !formData.width || !formData.thickness) {
+
+    if (!slab || !formData.position || !formData.material || !formData.length || !formData.width || !formData.thickness || !formData.quantity) {
       alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    const quantity = parseInt(formData.quantity);
+    if (quantity < 1) {
+      alert('La quantité doit être supérieure à 0');
       return;
     }
 
@@ -77,6 +85,7 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
       length: parseFloat(formData.length),
       width: parseFloat(formData.width),
       thickness: parseFloat(formData.thickness),
+      quantity: quantity,
       status: formData.status,
       debitSheetId: formData.status === 'réservé' && formData.debitSheetId ? formData.debitSheetId : undefined
     });
@@ -174,6 +183,23 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
               />
             </div>
           </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Quantité *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Nombre de tranches identiques à cet emplacement
+            </p>
           </div>
 
           <div>

@@ -66,18 +66,16 @@ export default function AddSlabModal({ isOpen, onClose, onAdd, slabs }: AddSlabM
       return;
     }
 
-    // Créer une tranche pour chaque unité de quantité
-    for (let i = 0; i < quantity; i++) {
-      onAdd({
-        userId: '', // Sera défini par le hook
-        position: formData.position,
-        material: formData.material,
-        length: parseFloat(formData.length),
-        width: parseFloat(formData.width),
-        thickness: parseFloat(formData.thickness),
-        status: formData.status
-      });
-    }
+    onAdd({
+      userId: '', // Sera défini par le hook
+      position: formData.position,
+      material: formData.material,
+      length: parseFloat(formData.length),
+      width: parseFloat(formData.width),
+      thickness: parseFloat(formData.thickness),
+      quantity: quantity,
+      status: formData.status
+    });
 
     // Reset form
     setFormData({
@@ -229,7 +227,7 @@ export default function AddSlabModal({ isOpen, onClose, onAdd, slabs }: AddSlabM
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Nombre de tranches identiques à créer
+                    Nombre de tranches identiques à cet emplacement
                   </p>
                 </div>
 
@@ -247,7 +245,7 @@ export default function AddSlabModal({ isOpen, onClose, onAdd, slabs }: AddSlabM
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Ajouter {formData.quantity && parseInt(formData.quantity) > 1 ? `(${formData.quantity} tranches)` : ''}</span>
+                    <span>Ajouter</span>
                   </button>
                 </div>
               </form>

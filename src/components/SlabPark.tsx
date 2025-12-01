@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Search as SearchIcon, Filter, Layers, Box } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Plus, Search as SearchIcon, Filter, Layers, Box, Upload, Download } from 'lucide-react';
 import { useSlabs } from '../hooks/useSlabs';
 import { useDebitSheets } from '../hooks/useDebitSheets';
+import { useMaterials } from '../hooks/useMaterials';
 import { useToast } from '../contexts/ToastContext';
 import { Slab, SlabFilter } from '../types';
 import { UserProfile } from '../hooks/useUserProfile';
@@ -14,6 +15,7 @@ import SlabMatchingModal from './SlabMatchingModal';
 import AddSlabModal from './AddSlabModal';
 import EditSlabModal from './EditSlabModal';
 import ConfirmationModal from './ConfirmationModal';
+import SlabImportResultModal from './SlabImportResultModal';
 import BlockPark from './BlockPark';
 
 interface SlabParkProps {
@@ -26,9 +28,11 @@ interface SlabParkProps {
 }
 
 export default function SlabPark({ profileLoading, profile, canManageSlabs, canEditSlabs, canAddSlabs, isAtelier }: SlabParkProps) {
-  const { slabs, loading, error, addSlab, updateSlab, deleteSlab } = useSlabs();
+  const { slabs, loading, error, addSlab, updateSlab, deleteSlab, importSlabsFromExcel, exportSlabsToExcel } = useSlabs();
   const { sheets } = useDebitSheets();
+  const { materials } = useMaterials();
   const { addToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'tranches' | 'blocs'>('tranches');
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
@@ -43,6 +47,10 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
   const [showFilters, setShowFilters] = useState(true);
 
   const [filters, setFilters] = useState<SlabFilter>({});
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showImportResult, setShowImportResult] = useState(false);
+  const [importResult, setImportResult] = useState<{ added: number; errors: string[] }>({ added: 0, errors: [] });
 
   // Extraire les matériaux uniques depuis les tranches en stock
   const availableMaterials = useMemo(() => {
@@ -97,6 +105,83 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
   const handleSlabClick = (slab: Slab) => {
     setSelectedSlab(slab);
     setShowDetailModal(true);
+  };
+
+  const handleImportClick = () => {
+    if (!canManageSlabs) {
+      addToast({
+        type: 'error',
+        title: 'Accès refusé',
+        message: 'Vous n\'avez pas la permission d\'importer des tranches.',
+        duration: 3000
+      });
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const result = await importSlabsFromExcel(file);
+      setImportResult(result);
+      setShowImportResult(true);
+
+      if (result.added > 0) {
+        addToast({
+          type: 'success',
+          title: 'Import réussi',
+          message: `${result.added} tranche${result.added > 1 ? 's ont été ajoutées' : ' a été ajoutée'}.`,
+          duration: 5000
+        });
+      }
+
+      if (result.errors.length > 0 && result.added === 0) {
+        addToast({
+          type: 'error',
+          title: 'Erreur d\'import',
+          message: `${result.errors.length} erreur${result.errors.length > 1 ? 's' : ''} détectée${result.errors.length > 1 ? 's' : ''}.`,
+          duration: 5000
+        });
+      }
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: err.message || 'Une erreur est survenue lors de l\'import.',
+        duration: 5000
+      });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleExportClick = async () => {
+    setIsExporting(true);
+    try {
+      await exportSlabsToExcel(materials);
+      addToast({
+        type: 'success',
+        title: 'Export réussi',
+        message: 'Le fichier Excel a été généré avec succès.',
+        duration: 3000
+      });
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: err.message || 'Une erreur est survenue lors de l\'export.',
+        duration: 5000
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleAddSlab = async (newSlab: Omit<Slab, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -232,6 +317,33 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
           <SlabParkDashboard />
           <div className="flex justify-between items-center">
           <div className="flex space-x-3">
+            {canManageSlabs && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleImportClick}
+                  disabled={isImporting}
+                  className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>{isImporting ? 'Import...' : 'Importer Excel'}</span>
+                </button>
+                <button
+                  onClick={handleExportClick}
+                  disabled={isExporting}
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>{isExporting ? 'Export...' : 'Exporter Excel'}</span>
+                </button>
+              </>
+            )}
             {canAddSlabs && (
               <>
                 <button
@@ -243,7 +355,7 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
                 </button>
                 <button
                   onClick={() => setShowMatchingModal(true)}
-                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-white shadow-md"
+                  className="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-white shadow-md"
                 >
                   <SearchIcon className="h-4 w-4" />
                   <span>Recherche intelligente</span>
@@ -329,6 +441,13 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
               onUpdate={handleUpdateSlab}
               slab={editingSlab}
               debitSheets={sheets}
+            />
+
+            <SlabImportResultModal
+              isOpen={showImportResult}
+              onClose={() => setShowImportResult(false)}
+              added={importResult.added}
+              errors={importResult.errors}
             />
 
             <ConfirmationModal

@@ -73,6 +73,7 @@ export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition
                 )}
                 <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Matière</th>
                 <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Dimensions</th>
+                <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Qté</th>
                 <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Statut</th>
                 <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">OS</th>
                 <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
@@ -104,6 +105,15 @@ export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition
                   <td className="px-3 sm:px-4 py-3 text-sm text-gray-900">{slab.material}</td>
                   <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 font-mono whitespace-nowrap">
                     {formatDimensions(slab.length, slab.width, slab.thickness)}
+                  </td>
+                  <td className="px-3 sm:px-4 py-3 text-center">
+                    {slab.quantity > 1 ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                        ×{slab.quantity}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500">1</span>
+                    )}
                   </td>
                   <td className="px-3 sm:px-4 py-3">
                     {slab.status === 'dispo' ? (
