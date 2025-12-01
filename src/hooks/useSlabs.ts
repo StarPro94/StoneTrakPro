@@ -194,16 +194,35 @@ export function useSlabs() {
 
       const { data: materialsData } = await supabase
         .from('materials')
-        .select('id, name, ref, type');
+        .select('id, name, ref, type, cmup');
 
-      const refToMaterial = new Map<string, { id: string; name: string; type: string }>();
+      const refToMaterial = new Map<string, { id: string; name: string; type: string; cmup: number | null }>();
       (materialsData || []).forEach((m: any) => {
-        refToMaterial.set(m.ref.toLowerCase(), { id: m.id, name: m.name, type: m.type });
+        refToMaterial.set(m.ref.toLowerCase(), { id: m.id, name: m.name, type: m.type, cmup: m.cmup });
+      });
+
+      // Fetch existing slabs by entry_number to detect duplicates
+      const entryNumbers = parseResult.slabs
+        .map(s => s.entryNumber)
+        .filter(en => en !== null);
+
+      const { data: existingSlabs } = await supabase
+        .from('slabs')
+        .select('id, entry_number')
+        .in('entry_number', entryNumbers.length > 0 ? entryNumbers : ['__none__']);
+
+      const existingEntryNumbers = new Map<string, string>();
+      (existingSlabs || []).forEach((s: any) => {
+        if (s.entry_number) {
+          existingEntryNumbers.set(s.entry_number, s.id);
+        }
       });
 
       const slabsToInsert = [];
+      const slabsToUpdate = [];
       const errors: string[] = [];
       const createdMaterials = new Set<string>();
+      let updatedCount = 0;
 
       for (const parsedSlab of parseResult.slabs) {
         const refLower = parsedSlab.ref.toLowerCase();
@@ -221,7 +240,7 @@ export function useSlabs() {
               type: materialType,
               thickness: thickness,
               is_active: true,
-              cmup: null,
+              cmup: parsedSlab.cmup,
             };
 
             const { data: created, error: createError } = await supabase
@@ -235,7 +254,7 @@ export function useSlabs() {
               continue;
             }
 
-            material = { id: created.id, name: created.name, type: created.type };
+            material = { id: created.id, name: created.name, type: created.type, cmup: created.cmup };
             refToMaterial.set(refLower, material);
             createdMaterials.add(refLower);
           } else {
@@ -243,8 +262,14 @@ export function useSlabs() {
           }
         }
 
-        slabsToInsert.push({
+        // Calculate price_estimate if not provided
+        const surfaceM2 = (parsedSlab.length * parsedSlab.width * parsedSlab.quantity) / 10000;
+        const cmupToUse = parsedSlab.cmup !== null ? parsedSlab.cmup : (material?.cmup || 0);
+        const priceEstimate = parsedSlab.value !== null ? parsedSlab.value : surfaceM2 * cmupToUse;
+
+        const slabData = {
           user_id: user.id,
+          entry_number: parsedSlab.entryNumber,
           position: parsedSlab.position,
           material: material!.name,
           length: parsedSlab.length,
@@ -252,33 +277,55 @@ export function useSlabs() {
           thickness: parsedSlab.thickness,
           quantity: parsedSlab.quantity,
           status: 'dispo',
-        });
-      }
+          price_estimate: priceEstimate,
+        };
 
-      if (slabsToInsert.length === 0) {
-        return { added: 0, errors };
-      }
-
-      const batchSize = 100;
-      let totalInserted = 0;
-
-      for (let i = 0; i < slabsToInsert.length; i += batchSize) {
-        const batch = slabsToInsert.slice(i, i + batchSize);
-        const { error: insertError } = await supabase
-          .from('slabs')
-          .insert(batch);
-
-        if (insertError) {
-          errors.push(`Erreur lors de l'insertion: ${insertError.message}`);
+        // Check if slab already exists (upsert logic)
+        if (parsedSlab.entryNumber && existingEntryNumbers.has(parsedSlab.entryNumber)) {
+          const existingId = existingEntryNumbers.get(parsedSlab.entryNumber)!;
+          slabsToUpdate.push({ id: existingId, ...slabData });
         } else {
-          totalInserted += batch.length;
+          slabsToInsert.push(slabData);
+        }
+      }
+
+      // Update existing slabs
+      for (const slabUpdate of slabsToUpdate) {
+        const { id, ...updateData } = slabUpdate;
+        const { error: updateError } = await supabase
+          .from('slabs')
+          .update(updateData)
+          .eq('id', id);
+
+        if (updateError) {
+          errors.push(`Erreur lors de la mise à jour de la tranche ${slabUpdate.entry_number}: ${updateError.message}`);
+        } else {
+          updatedCount++;
+        }
+      }
+
+      // Insert new slabs
+      let totalInserted = 0;
+      if (slabsToInsert.length > 0) {
+        const batchSize = 100;
+        for (let i = 0; i < slabsToInsert.length; i += batchSize) {
+          const batch = slabsToInsert.slice(i, i + batchSize);
+          const { error: insertError } = await supabase
+            .from('slabs')
+            .insert(batch);
+
+          if (insertError) {
+            errors.push(`Erreur lors de l'insertion du lot ${i / batchSize + 1}: ${insertError.message}`);
+          } else {
+            totalInserted += batch.length;
+          }
         }
       }
 
       await fetchSlabs();
 
       return {
-        added: totalInserted,
+        added: totalInserted + updatedCount,
         errors: [...errors, ...parseResult.errors.map(e => `Ligne ${e.row}: ${e.message}`)],
       };
     } catch (err: any) {
@@ -330,6 +377,30 @@ export function useSlabs() {
     }
   };
 
+  const deleteAllSlabs = async (): Promise<{ success: boolean; deletedCount: number; message: string }> => {
+    if (!user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('delete_all_user_slabs', {
+        p_user_id: user.id,
+      });
+
+      if (error) throw error;
+
+      await fetchSlabs();
+
+      return {
+        success: data.success,
+        deletedCount: data.deleted_count,
+        message: data.message,
+      };
+    } catch (err: any) {
+      throw new Error(`Erreur lors de la suppression: ${err.message}`);
+    }
+  };
+
   return {
     slabs,
     loading,
@@ -337,6 +408,7 @@ export function useSlabs() {
     addSlab,
     updateSlab,
     deleteSlab,
+    deleteAllSlabs,
     refetch: fetchSlabs,
     importSlabsFromExcel,
     exportSlabsToExcel,

@@ -28,7 +28,7 @@ interface SlabParkProps {
 }
 
 export default function SlabPark({ profileLoading, profile, canManageSlabs, canEditSlabs, canAddSlabs, isAtelier }: SlabParkProps) {
-  const { slabs, loading, error, addSlab, updateSlab, deleteSlab, importSlabsFromExcel, exportSlabsToExcel } = useSlabs();
+  const { slabs, loading, error, addSlab, updateSlab, deleteSlab, deleteAllSlabs, importSlabsFromExcel, exportSlabsToExcel } = useSlabs();
   const { sheets } = useDebitSheets();
   const { materials } = useMaterials();
   const { addToast } = useToast();
@@ -52,6 +52,8 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
   const [showImportResult, setShowImportResult] = useState(false);
   const [importResult, setImportResult] = useState<{ added: number; errors: string[] }>({ added: 0, errors: [] });
   const [showMaterialsSection, setShowMaterialsSection] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('showMaterialsSection');
@@ -171,6 +173,29 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteAllSlabs();
+      addToast({
+        type: 'success',
+        title: 'Parc vidé',
+        message: result.message,
+        duration: 5000,
+      });
+      setShowDeleteAllConfirm(false);
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: err.message || 'Une erreur est survenue lors de la suppression.',
+        duration: 5000,
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -395,6 +420,13 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
                   <Download className="h-4 w-4" />
                   <span>{isExporting ? 'Export...' : 'Exporter Excel'}</span>
                 </button>
+                <button
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={isDeleting || slabs.length === 0}
+                  className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span>{isDeleting ? 'Suppression...' : 'Vider le parc'}</span>
+                </button>
               </>
             )}
             {canAddSlabs && (
@@ -513,6 +545,17 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
               title="Supprimer la tranche"
               message="Êtes-vous sûr de vouloir supprimer cette tranche ? Cette action est irréversible."
               confirmButtonText="Supprimer"
+              cancelButtonText="Annuler"
+              type="danger"
+            />
+
+            <ConfirmationModal
+              isOpen={showDeleteAllConfirm}
+              onClose={() => setShowDeleteAllConfirm(false)}
+              onConfirm={handleDeleteAll}
+              title="Vider tout le parc à tranches"
+              message={`⚠️ ATTENTION : Vous êtes sur le point de supprimer TOUTES les tranches du parc (${slabs.length} tranches). Cette action est IRRÉVERSIBLE et ne peut pas être annulée. Êtes-vous absolument certain de vouloir continuer ?`}
+              confirmButtonText="OUI, TOUT SUPPRIMER"
               cancelButtonText="Annuler"
               type="danger"
             />

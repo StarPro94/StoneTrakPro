@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 
 export interface ParsedSlabRow {
+  entryNumber: string | null;
   material: string;
   position: string;
   length: number;
@@ -8,6 +9,8 @@ export interface ParsedSlabRow {
   thickness: number;
   quantity: number;
   ref: string;
+  value: number | null;
+  cmup: number | null;
 }
 
 export interface ParseResult {
@@ -51,6 +54,7 @@ export async function parseSlabExcelFile(file: File): Promise<ParseResult> {
         );
 
         const colIndexes = {
+          entryNumber: findColumnIndex(headers, ['n°saisie', 'nsaisie', 'numero saisie', 'entry number']),
           ref: findColumnIndex(headers, ['ref', 'référence']),
           matiere: findColumnIndex(headers, ['matière', 'matiere']),
           allee: findColumnIndex(headers, ['allée', 'allee']),
@@ -58,6 +62,8 @@ export async function parseSlabExcelFile(file: File): Promise<ParseResult> {
           largeur: findColumnIndex(headers, ['largeur']),
           epaisseur: findColumnIndex(headers, ['épaisseur', 'epaisseur']),
           nbre: findColumnIndex(headers, ['nbre', 'nombre', 'qté', 'quantité']),
+          valeur: findColumnIndex(headers, ['valeur', 'value']),
+          cmup: findColumnIndex(headers, ['cmup', 'prix', 'price']),
         };
 
         if (colIndexes.ref === -1) {
@@ -99,9 +105,12 @@ export async function parseSlabExcelFile(file: File): Promise<ParseResult> {
             continue;
           }
 
+          const entryNumber = getCellValue(row[colIndexes.entryNumber]);
           const matiere = getCellValue(row[colIndexes.matiere]);
           const ref = getCellValue(row[colIndexes.ref]);
           const nbre = getCellValue(row[colIndexes.nbre]);
+          const valeur = getCellValue(row[colIndexes.valeur]);
+          const cmup = getCellValue(row[colIndexes.cmup]);
 
           if (!matiere) {
             errors.push({
@@ -156,7 +165,12 @@ export async function parseSlabExcelFile(file: File): Promise<ParseResult> {
             continue;
           }
 
+          const entryNumberStr = entryNumber ? String(entryNumber).trim() : null;
+          const valeurNum = valeur ? parseFloat(String(valeur)) : null;
+          const cmupNum = cmup ? parseFloat(String(cmup)) : null;
+
           slabs.push({
+            entryNumber: entryNumberStr,
             material: String(matiere).trim(),
             position: String(allee).trim(),
             length: lengthNum,
@@ -164,6 +178,8 @@ export async function parseSlabExcelFile(file: File): Promise<ParseResult> {
             thickness: thicknessNum,
             quantity: Math.floor(quantityNum),
             ref: String(ref).trim(),
+            value: valeurNum,
+            cmup: cmupNum,
           });
         }
 
