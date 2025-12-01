@@ -144,27 +144,6 @@ const SlabParkDashboard = React.memo(function SlabParkDashboard() {
           </div>
         </div>
       )}
-
-      {statistics.materials && statistics.materials.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-5 border border-gray-200">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-            <Layers className="h-5 w-5 text-gray-600" />
-            <span>Matériaux en stock</span>
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {statistics.materials
-              .filter((m) => m !== null)
-              .map((material, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-300"
-                >
-                  {material}
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
