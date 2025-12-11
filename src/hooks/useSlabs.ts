@@ -23,20 +23,39 @@ export function useSlabs() {
       setLoading(true);
       setError(null);
 
-      const { data: slabsData, error: slabsError } = await supabase
-        .from('slabs')
-        .select(`
-          *,
-          debit_sheets (
-            numero_os,
-            ref_chantier
-          )
-        `)
-        .order('position', { ascending: true });
+      const allSlabs: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      if (slabsError) throw slabsError;
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
 
-      const formattedSlabs: Slab[] = slabsData.map(slab => ({
+        const { data: slabsData, error: slabsError } = await supabase
+          .from('slabs')
+          .select(`
+            *,
+            debit_sheets (
+              numero_os,
+              ref_chantier
+            )
+          `)
+          .order('position', { ascending: true })
+          .range(from, to);
+
+        if (slabsError) throw slabsError;
+
+        if (slabsData && slabsData.length > 0) {
+          allSlabs.push(...slabsData);
+          hasMore = slabsData.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const formattedSlabs: Slab[] = allSlabs.map(slab => ({
         id: slab.id,
         userId: slab.user_id,
         position: slab.position,
@@ -357,15 +376,34 @@ export function useSlabs() {
 
   const exportSlabsToExcel = async (materials: Material[]) => {
     try {
-      const { data: slabsData, error: slabsError } = await supabase
-        .from('slabs')
-        .select('*')
-        .order('material', { ascending: true })
-        .order('position', { ascending: true });
+      const allSlabsData: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      if (slabsError) throw slabsError;
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
 
-      const slabsWithMaterials = slabsData.map((slab: any) => {
+        const { data: slabsData, error: slabsError } = await supabase
+          .from('slabs')
+          .select('*')
+          .order('material', { ascending: true })
+          .order('position', { ascending: true })
+          .range(from, to);
+
+        if (slabsError) throw slabsError;
+
+        if (slabsData && slabsData.length > 0) {
+          allSlabsData.push(...slabsData);
+          hasMore = slabsData.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const slabsWithMaterials = allSlabsData.map((slab: any) => {
         const material = materials.find(
           (m) => m.name.toLowerCase() === slab.material.toLowerCase()
         );
