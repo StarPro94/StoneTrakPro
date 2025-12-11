@@ -83,7 +83,8 @@ export function useDebitSheets() {
           matiereItem: item.matiere_item || undefined,
           finition: item.finition || undefined,
           m2Item: item.m2_item ? parseFloat(item.m2_item) : undefined,
-          m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined
+          m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined,
+          numeroPalette: item.numero_palette || undefined
         }))
       }));
 
@@ -219,7 +220,8 @@ export function useDebitSheets() {
             matiere_item: item.matiereItem || null,
             finition: item.finition || null,
             m2_item: item.m2Item || null,
-            m3_item: item.m3Item || null
+            m3_item: item.m3Item || null,
+            numero_palette: item.numeroPalette || null
           })
           .eq('id', item.id);
 
@@ -295,7 +297,8 @@ export function useDebitSheets() {
           matiere_item: item.matiereItem || null,
           finition: item.finition || null,
           m2_item: item.m2Item || null,
-          m3_item: item.m3Item || null
+          m3_item: item.m3Item || null,
+          numero_palette: item.numeroPalette || null
         }));
 
         const { error: itemsError } = await supabase
