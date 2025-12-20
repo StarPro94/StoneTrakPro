@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Euro } from 'lucide-react';
 import { Slab, DebitSheet } from '../types';
 import { useMaterials } from '../hooks/useMaterials';
 import MaterialSearchCombobox from './MaterialSearchCombobox';
@@ -28,7 +28,8 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
     thickness: '',
     quantity: '',
     status: 'dispo' as 'dispo' | 'réservé',
-    debitSheetId: ''
+    debitSheetId: '',
+    priceEstimate: ''
   });
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
         thickness: slab.thickness.toString(),
         quantity: slab.quantity.toString(),
         status: slab.status,
-        debitSheetId: slab.debitSheetId || ''
+        debitSheetId: slab.debitSheetId || '',
+        priceEstimate: slab.priceEstimate?.toString() || ''
       });
     }
   }, [slab]);
@@ -87,7 +89,8 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
       thickness: parseFloat(formData.thickness),
       quantity: quantity,
       status: formData.status,
-      debitSheetId: formData.status === 'réservé' && formData.debitSheetId ? formData.debitSheetId : undefined
+      debitSheetId: formData.status === 'réservé' && formData.debitSheetId ? formData.debitSheetId : undefined,
+      priceEstimate: formData.priceEstimate ? parseFloat(formData.priceEstimate) : undefined
     });
 
     onClose();
@@ -199,6 +202,30 @@ export default function EditSlabModal({ isOpen, onClose, onUpdate, slab, debitSh
             />
             <p className="text-xs text-gray-500 mt-1">
               Nombre de tranches identiques à cet emplacement
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex items-center space-x-2">
+                <Euro className="h-4 w-4 text-emerald-600" />
+                <span>Valeur estimée</span>
+              </div>
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.priceEstimate}
+                onChange={(e) => setFormData({ ...formData, priceEstimate: e.target.value })}
+                placeholder="0.00"
+                className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">EUR</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Prix estimé de la tranche (optionnel)
             </p>
           </div>
 

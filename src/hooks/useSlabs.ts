@@ -146,7 +146,8 @@ export function useSlabs() {
           thickness: updatedSlab.thickness,
           quantity: updatedSlab.quantity || 1,
           status: updatedSlab.status,
-          debit_sheet_id: updatedSlab.debitSheetId || null
+          debit_sheet_id: updatedSlab.debitSheetId || null,
+          price_estimate: updatedSlab.priceEstimate ?? null
         })
         .eq('id', updatedSlab.id);
 
