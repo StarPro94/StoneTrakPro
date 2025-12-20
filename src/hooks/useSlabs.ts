@@ -81,7 +81,8 @@ export function useSlabs() {
         createdAt: new Date(slab.created_at),
         updatedAt: new Date(slab.updated_at),
         numeroOS: slab.debit_sheets?.numero_os || undefined,
-        refChantier: slab.debit_sheets?.ref_chantier || undefined
+        refChantier: slab.debit_sheets?.ref_chantier || undefined,
+        priceEstimate: slab.price_estimate ? parseFloat(slab.price_estimate) : undefined
       }));
 
       setSlabs(formattedSlabs);
