@@ -688,13 +688,13 @@ export function useDebitSheets() {
             } else if (payload.eventType === 'UPDATE') {
               console.log('=== DÉBUT TRAITEMENT UPDATE ITEM ===');
               console.log('Payload UPDATE item reçu:', payload);
-              // Mettre à jour l'item existant
-              setSheets(prevSheets => 
-                prevSheets.map(sheet => 
+              // Mettre à jour l'item existant avec TOUS les champs
+              setSheets(prevSheets =>
+                prevSheets.map(sheet =>
                   sheet.id === payload.new.sheet_id
                     ? {
                         ...sheet,
-                        items: sheet.items.map(item => 
+                        items: sheet.items.map(item =>
                           item.id === payload.new.id
                             ? {
                                 ...item,
@@ -703,7 +703,13 @@ export function useDebitSheets() {
                                 largeur: parseFloat(payload.new.largeur),
                                 epaisseur: parseFloat(payload.new.epaisseur),
                                 quantite: payload.new.quantite,
-                                termine: payload.new.termine
+                                termine: payload.new.termine,
+                                numeroAppareil: payload.new.numero_appareil || undefined,
+                                matiereItem: payload.new.matiere_item || undefined,
+                                finition: payload.new.finition || undefined,
+                                m2Item: payload.new.m2_item ? parseFloat(payload.new.m2_item) : undefined,
+                                m3Item: payload.new.m3_item ? parseFloat(payload.new.m3_item) : undefined,
+                                numeroPalette: payload.new.numero_palette || undefined
                               }
                             : item
                         )

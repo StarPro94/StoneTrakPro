@@ -9,14 +9,14 @@ export interface PackingSlipData {
   items: DebitItem[];
 }
 
-export function generatePackingSlipPDF(sheet: DebitSheet): void {
+export function generatePackingSlipPDF(sheet: DebitSheet, selectedPalettes?: string[]): void {
   const win = window.open('', '_blank');
   if (!win) {
     alert('Veuillez autoriser les popups pour générer le PDF');
     return;
   }
 
-  const itemsByPalette = groupItemsByPalette(sheet.items);
+  const itemsByPalette = groupItemsByPalette(sheet.items, selectedPalettes);
 
   const html = `
 <!DOCTYPE html>
@@ -225,10 +225,19 @@ export function generatePackingSlipPDF(sheet: DebitSheet): void {
   win.document.close();
 }
 
-function groupItemsByPalette(items: DebitItem[]): Map<number | 'none', DebitItem[]> {
+function groupItemsByPalette(items: DebitItem[], selectedPalettes?: string[]): Map<number | 'none', DebitItem[]> {
+  let filteredItems = items;
+
+  if (selectedPalettes && selectedPalettes.length > 0) {
+    filteredItems = items.filter(item => {
+      const paletteKey = item.numeroPalette ? String(item.numeroPalette) : 'none';
+      return selectedPalettes.includes(paletteKey);
+    });
+  }
+
   const grouped = new Map<number | 'none', DebitItem[]>();
 
-  items.forEach(item => {
+  filteredItems.forEach(item => {
     const key = item.numeroPalette ?? 'none';
     if (!grouped.has(key)) {
       grouped.set(key, []);

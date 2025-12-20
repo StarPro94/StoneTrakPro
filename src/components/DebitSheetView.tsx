@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, Square, RotateCcw, Package, Grid3X3, Search, FileText, Upload, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, Square, RotateCcw, Package, Grid3X3, Search, FileText, Upload, AlertCircle, Printer } from 'lucide-react';
 import { DebitSheet, DebitItem } from '../types';
 import { useSlabs } from '../hooks/useSlabs';
 import { useMaterials } from '../hooks/useMaterials';
@@ -9,6 +9,8 @@ import { UserProfile } from '../hooks/useUserProfile';
 import { calculateItemMetrics, calculateSheetTotals } from '../utils/materialUtils';
 import { generatePackingSlipPDF } from '../utils/pdfGenerator';
 import { parsePDFFile } from '../utils/pdfParser';
+import PaletteSelectionModal from './PaletteSelectionModal';
+import { extractPalettesFromItems } from '../utils/paletteUtils';
 
 interface DebitSheetViewProps {
   sheet: DebitSheet;
@@ -29,6 +31,8 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{type: 'success' | 'error' | 'warning', message: string, details?: any} | null>(null);
   const [editingMaterialItemId, setEditingMaterialItemId] = useState<string | null>(null);
+  const [showPaletteSelectionModal, setShowPaletteSelectionModal] = useState(false);
+  const [palettes, setPalettes] = useState<any[]>([]);
 
   const { materials } = useMaterials();
   const materialNames = materials.map(m => m.name);
@@ -61,6 +65,10 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
       const totals = calculateSheetTotals(activeItems);
       setRemainingM2(totals.totalM2);
       setRemainingM3(totals.totalM3);
+
+      // Extraire les palettes
+      const extractedPalettes = extractPalettesFromItems(sheet.items);
+      setPalettes(extractedPalettes);
     }
   }, [sheet.items]);
 
@@ -239,13 +247,22 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
 
               <div className="flex items-center space-x-3">
                 {(isAdmin || isBureau) && (
-                  <button
-                    onClick={() => generatePackingSlipPDF(sheet)}
-                    className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>Fiche de Colisage</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => generatePackingSlipPDF(sheet)}
+                      className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span>Imprimer Tout</span>
+                    </button>
+                    <button
+                      onClick={() => setShowPaletteSelectionModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Sélectionner Palettes</span>
+                    </button>
+                  </>
                 )}
                 {canResetItems && (
                   <button
@@ -599,6 +616,15 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
           </div>
         </div>
       </div>
+
+      <PaletteSelectionModal
+        isOpen={showPaletteSelectionModal}
+        onClose={() => setShowPaletteSelectionModal(false)}
+        onPrint={(selectedPalettes) => {
+          generatePackingSlipPDF(sheet, selectedPalettes);
+        }}
+        palettes={palettes}
+      />
     </div>
   );
 }
