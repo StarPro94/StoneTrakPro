@@ -95,9 +95,9 @@ export default function SlabTable({ slabs, title, onEdit, onDelete, showPosition
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {displayedSlabs.map((slab, index) => (
+              {displayedSlabs.map((slab) => (
                 <tr
-                  key={`${slab.id}-${index}`}
+                  key={slab.id}
                   className={`transition-colors ${
                     enableDragDrop 
                       ? 'cursor-move hover:bg-blue-50' 

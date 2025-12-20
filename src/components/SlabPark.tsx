@@ -73,23 +73,8 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
     return Array.from(materials).sort();
   }, [slabs]);
 
-  // Éclater les tranches avec quantity > 1 en entrées individuelles pour l'affichage
-  const expandedSlabs = useMemo(() => {
-    const result: Slab[] = [];
-    slabs.forEach((slab) => {
-      const qty = slab.quantity || 1;
-      for (let i = 0; i < qty; i++) {
-        result.push({
-          ...slab,
-          quantity: 1,
-        });
-      }
-    });
-    return result;
-  }, [slabs]);
-
   const filteredSlabs = useMemo(() => {
-    return expandedSlabs.filter((slab) => {
+    return slabs.filter((slab) => {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesSearch =

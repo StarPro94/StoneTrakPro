@@ -303,30 +303,34 @@ export function useSlabs() {
           }
         }
 
-        // Calculate price_estimate if not provided
-        const surfaceM2 = (parsedSlab.length * parsedSlab.width * parsedSlab.quantity) / 10000;
+        // Calculate price_estimate per unit (not multiplied by quantity since we create individual rows)
+        const surfaceM2 = (parsedSlab.length * parsedSlab.width) / 10000;
         const cmupToUse = parsedSlab.cmup !== null ? parsedSlab.cmup : (material?.cmup || 0);
-        const priceEstimate = parsedSlab.value !== null ? parsedSlab.value : surfaceM2 * cmupToUse;
+        const priceEstimate = parsedSlab.value !== null ? (parsedSlab.value / parsedSlab.quantity) : surfaceM2 * cmupToUse;
 
-        const slabData = {
-          user_id: user.id,
-          entry_number: parsedSlab.entryNumber,
-          position: parsedSlab.position,
-          material: material!.name,
-          length: parsedSlab.length,
-          width: parsedSlab.width,
-          thickness: parsedSlab.thickness,
-          quantity: parsedSlab.quantity,
-          status: 'dispo',
-          price_estimate: priceEstimate,
-        };
+        // Créer une ligne par tranche individuelle (éclater quantity)
+        for (let q = 0; q < parsedSlab.quantity; q++) {
+          const slabData = {
+            user_id: user.id,
+            entry_number: parsedSlab.entryNumber ? `${parsedSlab.entryNumber}-${q + 1}` : null,
+            position: parsedSlab.position,
+            material: material!.name,
+            length: parsedSlab.length,
+            width: parsedSlab.width,
+            thickness: parsedSlab.thickness,
+            quantity: 1,
+            status: 'dispo',
+            price_estimate: priceEstimate,
+          };
 
-        // Check if slab already exists (upsert logic)
-        if (parsedSlab.entryNumber && existingEntryNumbers.has(parsedSlab.entryNumber)) {
-          const existingId = existingEntryNumbers.get(parsedSlab.entryNumber)!;
-          slabsToUpdate.push({ id: existingId, ...slabData });
-        } else {
-          slabsToInsert.push(slabData);
+          // Check if slab already exists (upsert logic)
+          const entryKey = slabData.entry_number;
+          if (entryKey && existingEntryNumbers.has(entryKey)) {
+            const existingId = existingEntryNumbers.get(entryKey)!;
+            slabsToUpdate.push({ id: existingId, ...slabData });
+          } else {
+            slabsToInsert.push(slabData);
+          }
         }
       }
 
