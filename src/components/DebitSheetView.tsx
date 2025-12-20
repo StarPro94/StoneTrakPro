@@ -249,7 +249,7 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
                 {(isAdmin || isBureau) && (
                   <>
                     <button
-                      onClick={() => generatePackingSlipPDF(sheet)}
+                      onClick={() => generatePackingSlipPDF({ ...sheet, items })}
                       className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
                     >
                       <Printer className="h-4 w-4" />
@@ -621,7 +621,7 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
         isOpen={showPaletteSelectionModal}
         onClose={() => setShowPaletteSelectionModal(false)}
         onPrint={(selectedPalettes) => {
-          generatePackingSlipPDF(sheet, selectedPalettes);
+          generatePackingSlipPDF({ ...sheet, items }, selectedPalettes);
         }}
         palettes={palettes}
       />

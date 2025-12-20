@@ -16,14 +16,19 @@ export function generatePackingSlipPDF(sheet: DebitSheet, selectedPalettes?: str
     return;
   }
 
-  const itemsByPalette = groupItemsByPalette(sheet.items, selectedPalettes);
+  const items = sheet.items || [];
+  const itemsByPalette = groupItemsByPalette(items, selectedPalettes);
+
+  const formattedDate = sheet.dateCreation
+    ? new Date(sheet.dateCreation).toLocaleDateString('fr-FR')
+    : new Date().toLocaleDateString('fr-FR');
 
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Fiche de Colisage - ${sheet.numeroFiche}</title>
+  <title>Fiche de Colisage - ${sheet.numeroOS}</title>
   <style>
     * {
       margin: 0;
@@ -85,20 +90,32 @@ export function generatePackingSlipPDF(sheet: DebitSheet, selectedPalettes?: str
 
     .palette-section {
       margin-bottom: 30px;
-      border: 2px solid #9333ea;
+      border: 2px solid #0284c7;
       border-radius: 8px;
       padding: 15px;
       page-break-inside: avoid;
     }
 
     .palette-header {
-      background: #9333ea;
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
       color: white;
-      padding: 10px 15px;
+      padding: 12px 15px;
       margin: -15px -15px 15px -15px;
       border-radius: 6px 6px 0 0;
       font-size: 16px;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .palette-header::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'/%3E%3C/svg%3E");
+      background-size: contain;
     }
 
     table {
@@ -178,16 +195,16 @@ export function generatePackingSlipPDF(sheet: DebitSheet, selectedPalettes?: str
       <h1>FICHE DE COLISAGE</h1>
       <div class="header-info">
         <div class="info-block">
-          <div class="info-label">Numéro Fiche</div>
-          <div class="info-value">${sheet.numeroFiche}</div>
+          <div class="info-label">Numéro OS</div>
+          <div class="info-value">${sheet.numeroOS || '-'}</div>
         </div>
         <div class="info-block">
           <div class="info-label">Date</div>
-          <div class="info-value">${new Date(sheet.dateFiche).toLocaleDateString('fr-FR')}</div>
+          <div class="info-value">${formattedDate}</div>
         </div>
         <div class="info-block">
           <div class="info-label">Commercial</div>
-          <div class="info-value">${sheet.cial}</div>
+          <div class="info-value">${sheet.cial || '-'}</div>
         </div>
         <div class="info-block">
           <div class="info-label">Référence Chantier</div>
@@ -195,7 +212,7 @@ export function generatePackingSlipPDF(sheet: DebitSheet, selectedPalettes?: str
         </div>
         <div class="info-block">
           <div class="info-label">Numéro ARC</div>
-          <div class="info-value">${sheet.numeroARC}</div>
+          <div class="info-value">${sheet.numeroARC || '-'}</div>
         </div>
         <div class="info-block">
           <div class="info-label">Statut</div>
@@ -229,14 +246,10 @@ function groupItemsByPalette(items: DebitItem[], selectedPalettes?: string[]): M
   let filteredItems = items;
 
   if (selectedPalettes && selectedPalettes.length > 0) {
-    console.log('Palettes sélectionnées pour impression:', selectedPalettes);
     filteredItems = items.filter(item => {
       const paletteKey = item.numeroPalette ? String(item.numeroPalette) : 'none';
-      const isIncluded = selectedPalettes.includes(paletteKey);
-      console.log(`Item palette=${paletteKey}, included=${isIncluded}`);
-      return isIncluded;
+      return selectedPalettes.includes(paletteKey);
     });
-    console.log(`Items filtrés: ${filteredItems.length} sur ${items.length}`);
   }
 
   const grouped = new Map<number | 'none', DebitItem[]>();
