@@ -11,7 +11,7 @@ export function extractPalettesFromItems(items: DebitItem[]): PaletteInfo[] {
   const paletteMap = new Map<string, DebitItem[]>();
 
   items.forEach(item => {
-    const paletteNum = item.numeroPalette || 'none';
+    const paletteNum = item.numeroPalette ? String(item.numeroPalette) : 'none';
     if (!paletteMap.has(paletteNum)) {
       paletteMap.set(paletteNum, []);
     }

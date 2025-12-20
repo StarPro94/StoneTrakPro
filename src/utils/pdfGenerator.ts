@@ -229,10 +229,14 @@ function groupItemsByPalette(items: DebitItem[], selectedPalettes?: string[]): M
   let filteredItems = items;
 
   if (selectedPalettes && selectedPalettes.length > 0) {
+    console.log('Palettes sélectionnées pour impression:', selectedPalettes);
     filteredItems = items.filter(item => {
       const paletteKey = item.numeroPalette ? String(item.numeroPalette) : 'none';
-      return selectedPalettes.includes(paletteKey);
+      const isIncluded = selectedPalettes.includes(paletteKey);
+      console.log(`Item palette=${paletteKey}, included=${isIncluded}`);
+      return isIncluded;
     });
+    console.log(`Items filtrés: ${filteredItems.length} sur ${items.length}`);
   }
 
   const grouped = new Map<number | 'none', DebitItem[]>();
