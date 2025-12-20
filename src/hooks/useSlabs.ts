@@ -5,11 +5,23 @@ import { useAuth } from './useAuth';
 import { parseSlabExcelFile, ParseResult } from '../utils/slabExcelParser';
 import { generateSlabExcelFile, downloadExcelFile } from '../utils/slabExcelGenerator';
 
+export interface ImportProgress {
+  phase: 'parsing' | 'checking' | 'materials' | 'inserting' | 'done';
+  totalLines: number;
+  totalSlabs: number;
+  processedSlabs: number;
+  insertedSlabs: number;
+  skippedSlabs: number;
+  errors: string[];
+}
+
 export function useSlabs() {
   const { user } = useAuth();
   const [slabs, setSlabs] = useState<Slab[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 
   const fetchSlabs = async () => {
     if (!user) {
@@ -172,44 +184,78 @@ export function useSlabs() {
 
   useEffect(() => {
     fetchSlabs();
+  }, [user]);
 
-    if (user) {
-      const slabsSubscription = supabase
-        .channel('slabs_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'slabs'
-          },
-          async (payload) => {
+  useEffect(() => {
+    if (!user || isImporting) return;
+
+    const slabsSubscription = supabase
+      .channel('slabs_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'slabs'
+        },
+        async (payload) => {
+          if (!isImporting) {
             console.log('Changement détecté sur slabs:', payload);
             await fetchSlabs();
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        slabsSubscription.unsubscribe();
-      };
-    }
-  }, [user]);
+    return () => {
+      slabsSubscription.unsubscribe();
+    };
+  }, [user, isImporting]);
 
-  const importSlabsFromExcel = async (file: File): Promise<{ added: number; errors: string[] }> => {
+  const importSlabsFromExcel = async (file: File): Promise<{ added: number; skipped: number; errors: string[] }> => {
     if (!user) {
-      throw new Error('Utilisateur non authentifié');
+      throw new Error('Utilisateur non authentifie');
     }
+
+    setIsImporting(true);
+    const errors: string[] = [];
+
+    const updateProgress = (updates: Partial<ImportProgress>) => {
+      setImportProgress(prev => prev ? { ...prev, ...updates } : {
+        phase: 'parsing',
+        totalLines: 0,
+        totalSlabs: 0,
+        processedSlabs: 0,
+        insertedSlabs: 0,
+        skippedSlabs: 0,
+        errors: [],
+        ...updates
+      });
+    };
 
     try {
+      updateProgress({ phase: 'parsing', totalLines: 0, totalSlabs: 0, processedSlabs: 0, insertedSlabs: 0, skippedSlabs: 0, errors: [] });
+
       const parseResult: ParseResult = await parseSlabExcelFile(file);
 
       if (parseResult.errors.length > 0 && parseResult.slabs.length === 0) {
+        setIsImporting(false);
+        setImportProgress(null);
         return {
           added: 0,
+          skipped: 0,
           errors: parseResult.errors.map(e => `Ligne ${e.row}: ${e.message}`),
         };
       }
+
+      let totalSlabsToCreate = 0;
+      parseResult.slabs.forEach(s => { totalSlabsToCreate += s.quantity; });
+
+      updateProgress({
+        phase: 'checking',
+        totalLines: parseResult.slabs.length,
+        totalSlabs: totalSlabsToCreate
+      });
 
       const { data: materialsData } = await supabase
         .from('materials')
@@ -222,28 +268,46 @@ export function useSlabs() {
         }
       });
 
-      // Fetch existing slabs by entry_number to detect duplicates
-      const entryNumbers = parseResult.slabs
-        .map(s => s.entryNumber)
-        .filter(en => en !== null);
+      const existingEntryNumbers = new Set<string>();
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      const { data: existingSlabs } = await supabase
-        .from('slabs')
-        .select('id, entry_number')
-        .in('entry_number', entryNumbers.length > 0 ? entryNumbers : ['__none__']);
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
 
-      const existingEntryNumbers = new Map<string, string>();
-      (existingSlabs || []).forEach((s: any) => {
-        if (s.entry_number) {
-          existingEntryNumbers.set(s.entry_number, s.id);
+        const { data: existingSlabs, error: fetchError } = await supabase
+          .from('slabs')
+          .select('entry_number')
+          .not('entry_number', 'is', null)
+          .range(from, to);
+
+        if (fetchError) {
+          console.error('Erreur lors de la recuperation des entry_numbers:', fetchError);
+          break;
         }
-      });
 
-      const slabsToInsert = [];
-      const slabsToUpdate = [];
-      const errors: string[] = [];
+        if (existingSlabs && existingSlabs.length > 0) {
+          existingSlabs.forEach((s: any) => {
+            if (s.entry_number) {
+              existingEntryNumbers.add(s.entry_number);
+            }
+          });
+          hasMore = existingSlabs.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`Recupere ${existingEntryNumbers.size} entry_numbers existants en base`);
+
+      updateProgress({ phase: 'materials' });
+
+      const slabsToInsert: any[] = [];
+      let skippedCount = 0;
       const createdMaterials = new Set<string>();
-      let updatedCount = 0;
 
       for (const parsedSlab of parseResult.slabs) {
         const refLower = parsedSlab.ref.toLowerCase();
@@ -251,7 +315,6 @@ export function useSlabs() {
 
         if (!material) {
           if (!createdMaterials.has(refLower)) {
-            // Material not in our map yet - check database first
             const { data: existingInDb } = await supabase
               .from('materials')
               .select('id, name, type, cmup')
@@ -259,7 +322,6 @@ export function useSlabs() {
               .maybeSingle();
 
             if (existingInDb) {
-              // Material already exists in database, use it
               material = {
                 id: existingInDb.id,
                 name: existingInDb.name,
@@ -269,7 +331,6 @@ export function useSlabs() {
               refToMaterial.set(refLower, material);
               createdMaterials.add(refLower);
             } else {
-              // Material doesn't exist, create it
               const materialType = /\bK\d+/i.test(parsedSlab.material) ? 'tranche' : 'bloc';
               const thicknessMatch = parsedSlab.material.match(/K(\d+)/i);
               const thickness = thicknessMatch ? parseInt(thicknessMatch[1]) : null;
@@ -290,7 +351,7 @@ export function useSlabs() {
                 .single();
 
               if (createError) {
-                errors.push(`Erreur lors de la création de la matière "${parsedSlab.material}" (${parsedSlab.ref}): ${createError.message}`);
+                errors.push(`Erreur creation matiere "${parsedSlab.material}" (${parsedSlab.ref}): ${createError.message}`);
                 continue;
               }
 
@@ -303,18 +364,25 @@ export function useSlabs() {
           }
         }
 
-        // Calculate price_estimate per unit (not multiplied by quantity since we create individual rows)
+        if (!material) continue;
+
         const surfaceM2 = (parsedSlab.length * parsedSlab.width) / 10000;
-        const cmupToUse = parsedSlab.cmup !== null ? parsedSlab.cmup : (material?.cmup || 0);
+        const cmupToUse = parsedSlab.cmup !== null ? parsedSlab.cmup : (material.cmup || 0);
         const priceEstimate = parsedSlab.value !== null ? (parsedSlab.value / parsedSlab.quantity) : surfaceM2 * cmupToUse;
 
-        // Créer une ligne par tranche individuelle (éclater quantity)
         for (let q = 0; q < parsedSlab.quantity; q++) {
+          const entryNumber = parsedSlab.entryNumber ? `${parsedSlab.entryNumber}-${q + 1}` : null;
+
+          if (entryNumber && existingEntryNumbers.has(entryNumber)) {
+            skippedCount++;
+            continue;
+          }
+
           const slabData = {
             user_id: user.id,
-            entry_number: parsedSlab.entryNumber ? `${parsedSlab.entryNumber}-${q + 1}` : null,
+            entry_number: entryNumber,
             position: parsedSlab.position,
-            material: material!.name,
+            material: material.name,
             length: parsedSlab.length,
             width: parsedSlab.width,
             thickness: parsedSlab.thickness,
@@ -323,58 +391,70 @@ export function useSlabs() {
             price_estimate: priceEstimate,
           };
 
-          // Check if slab already exists (upsert logic)
-          const entryKey = slabData.entry_number;
-          if (entryKey && existingEntryNumbers.has(entryKey)) {
-            const existingId = existingEntryNumbers.get(entryKey)!;
-            slabsToUpdate.push({ id: existingId, ...slabData });
-          } else {
-            slabsToInsert.push(slabData);
+          slabsToInsert.push(slabData);
+
+          if (entryNumber) {
+            existingEntryNumbers.add(entryNumber);
           }
         }
       }
 
-      // Update existing slabs
-      for (const slabUpdate of slabsToUpdate) {
-        const { id, ...updateData } = slabUpdate;
-        const { error: updateError } = await supabase
-          .from('slabs')
-          .update(updateData)
-          .eq('id', id);
+      updateProgress({
+        phase: 'inserting',
+        skippedSlabs: skippedCount,
+        processedSlabs: 0
+      });
 
-        if (updateError) {
-          errors.push(`Erreur lors de la mise à jour de la tranche ${slabUpdate.entry_number}: ${updateError.message}`);
-        } else {
-          updatedCount++;
-        }
-      }
-
-      // Insert new slabs
       let totalInserted = 0;
-      if (slabsToInsert.length > 0) {
-        const batchSize = 100;
-        for (let i = 0; i < slabsToInsert.length; i += batchSize) {
-          const batch = slabsToInsert.slice(i, i + batchSize);
+      const batchSize = 200;
+      const maxRetries = 3;
+
+      for (let i = 0; i < slabsToInsert.length; i += batchSize) {
+        const batch = slabsToInsert.slice(i, i + batchSize);
+        let success = false;
+        let retryCount = 0;
+
+        while (!success && retryCount < maxRetries) {
           const { error: insertError } = await supabase
             .from('slabs')
             .insert(batch);
 
           if (insertError) {
-            errors.push(`Erreur lors de l'insertion du lot ${i / batchSize + 1}: ${insertError.message}`);
+            retryCount++;
+            if (retryCount >= maxRetries) {
+              errors.push(`Erreur lot ${Math.floor(i / batchSize) + 1} apres ${maxRetries} tentatives: ${insertError.message}`);
+            } else {
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
           } else {
+            success = true;
             totalInserted += batch.length;
           }
         }
+
+        updateProgress({
+          processedSlabs: Math.min(i + batchSize, slabsToInsert.length),
+          insertedSlabs: totalInserted,
+          errors: [...errors]
+        });
       }
+
+      updateProgress({ phase: 'done', insertedSlabs: totalInserted, errors: [...errors] });
 
       await fetchSlabs();
 
       return {
-        added: totalInserted + updatedCount,
+        added: totalInserted,
+        skipped: skippedCount,
         errors: [...errors, ...parseResult.errors.map(e => `Ligne ${e.row}: ${e.message}`)],
       };
     } catch (err: any) {
-      throw new Error(`Erreur lors de l'import: ${err.message}`);
+      const errorMsg = `Erreur lors de l'import: ${err.message}`;
+      updateProgress({ errors: [...errors, errorMsg] });
+      throw new Error(errorMsg);
+    } finally {
+      setIsImporting(false);
+      setTimeout(() => setImportProgress(null), 500);
     }
   };
 
@@ -469,6 +549,8 @@ export function useSlabs() {
     slabs,
     loading,
     error,
+    isImporting,
+    importProgress,
     addSlab,
     updateSlab,
     deleteSlab,

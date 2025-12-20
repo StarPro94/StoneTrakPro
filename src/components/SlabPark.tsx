@@ -16,6 +16,7 @@ import AddSlabModal from './AddSlabModal';
 import EditSlabModal from './EditSlabModal';
 import ConfirmationModal from './ConfirmationModal';
 import SlabImportResultModal from './SlabImportResultModal';
+import ImportProgressModal from './ImportProgressModal';
 import BlockPark from './BlockPark';
 
 interface SlabParkProps {
@@ -28,7 +29,7 @@ interface SlabParkProps {
 }
 
 export default function SlabPark({ profileLoading, profile, canManageSlabs, canEditSlabs, canAddSlabs, isAtelier }: SlabParkProps) {
-  const { slabs, loading, error, addSlab, updateSlab, deleteSlab, deleteAllSlabs, importSlabsFromExcel, exportSlabsToExcel } = useSlabs();
+  const { slabs, loading, error, isImporting, importProgress, addSlab, updateSlab, deleteSlab, deleteAllSlabs, importSlabsFromExcel, exportSlabsToExcel } = useSlabs();
   const { sheets } = useDebitSheets();
   const { materials } = useMaterials();
   const { addToast } = useToast();
@@ -47,10 +48,10 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
   const [showFilters, setShowFilters] = useState(true);
 
   const [filters, setFilters] = useState<SlabFilter>({});
-  const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showImportResult, setShowImportResult] = useState(false);
-  const [importResult, setImportResult] = useState<{ added: number; errors: string[] }>({ added: 0, errors: [] });
+  const [showImportProgress, setShowImportProgress] = useState(false);
+  const [importResult, setImportResult] = useState<{ added: number; skipped: number; errors: string[] }>({ added: 0, skipped: 0, errors: [] });
   const [showMaterialsSection, setShowMaterialsSection] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,28 +139,35 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsImporting(true);
+    setShowImportProgress(true);
     try {
       const result = await importSlabsFromExcel(file);
       setImportResult(result);
-      setShowImportResult(true);
 
       if (result.added > 0) {
         addToast({
           type: 'success',
-          title: 'Import réussi',
-          message: `${result.added} tranche${result.added > 1 ? 's ont été ajoutées' : ' a été ajoutée'}.`,
+          title: 'Import termine',
+          message: `${result.added} tranche${result.added > 1 ? 's ajoutees' : ' ajoutee'}${result.skipped > 0 ? `, ${result.skipped} doublon${result.skipped > 1 ? 's ignores' : ' ignore'}` : ''}.`,
+          duration: 5000
+        });
+      } else if (result.skipped > 0) {
+        addToast({
+          type: 'info',
+          title: 'Aucune nouvelle tranche',
+          message: `${result.skipped} doublon${result.skipped > 1 ? 's ignores' : ' ignore'} - toutes les tranches existent deja.`,
           duration: 5000
         });
       }
 
-      if (result.errors.length > 0 && result.added === 0) {
+      if (result.errors.length > 0) {
         addToast({
-          type: 'error',
-          title: 'Erreur d\'import',
-          message: `${result.errors.length} erreur${result.errors.length > 1 ? 's' : ''} détectée${result.errors.length > 1 ? 's' : ''}.`,
+          type: 'warning',
+          title: 'Import avec erreurs',
+          message: `${result.errors.length} erreur${result.errors.length > 1 ? 's' : ''} detectee${result.errors.length > 1 ? 's' : ''}.`,
           duration: 5000
         });
+        setShowImportResult(true);
       }
     } catch (err: any) {
       addToast({
@@ -169,7 +177,6 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
         duration: 5000
       });
     } finally {
-      setIsImporting(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -569,6 +576,12 @@ export default function SlabPark({ profileLoading, profile, canManageSlabs, canE
                   handleSlabClick(slab);
                 }
               }}
+            />
+
+            <ImportProgressModal
+              isOpen={showImportProgress}
+              progress={importProgress}
+              onClose={() => setShowImportProgress(false)}
             />
           </>
         )}
