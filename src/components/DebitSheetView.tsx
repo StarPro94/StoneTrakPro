@@ -227,12 +227,76 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
     onUpdateSheet(updatedSheet);
   };
 
-  const updateSubItemPalette = (itemId: string, subIndex: number, palette: number | null) => {
+  const updateSubItemPalette = (itemId: string, subIndex: number, palette: number | null, cascade: boolean = false) => {
     const updatedItems = items.map(item => {
       if (item.id !== itemId) return item;
 
       const subItemsPalettes = [...(item.subItemsPalettes || Array(item.quantite).fill(null))];
-      subItemsPalettes[subIndex] = palette;
+
+      if (cascade) {
+        for (let i = subIndex; i < item.quantite; i++) {
+          subItemsPalettes[i] = palette;
+        }
+      } else {
+        subItemsPalettes[subIndex] = palette;
+      }
+
+      return {
+        ...item,
+        subItemsPalettes
+      };
+    });
+
+    setItems(updatedItems);
+
+    const updatedSheet = {
+      ...sheet,
+      items: updatedItems
+    };
+
+    onUpdateSheet(updatedSheet);
+  };
+
+  const toggleAllSubItems = (itemId: string, termine: boolean) => {
+    const updatedItems = items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const subItemsTermine = Array(item.quantite).fill(termine);
+
+      return {
+        ...item,
+        subItemsTermine,
+        termine
+      };
+    });
+
+    setItems(updatedItems);
+
+    if (termine) {
+      setExpandedItemId(null);
+    }
+
+    const activeItems = updatedItems.filter(item => !item.termine);
+    const totals = calculateSheetTotals(activeItems);
+    setRemainingM2(totals.totalM2);
+    setRemainingM3(totals.totalM3);
+
+    const allItemsCompleted = updatedItems.every(item => item.termine);
+
+    const updatedSheet = {
+      ...sheet,
+      items: updatedItems,
+      ...(allItemsCompleted && !sheet.fini ? { fini: true, dateFinition: new Date() } : {})
+    };
+
+    onUpdateSheet(updatedSheet);
+  };
+
+  const applyPaletteToAllSubItems = (itemId: string, palette: number | null) => {
+    const updatedItems = items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const subItemsPalettes = Array(item.quantite).fill(palette);
 
       return {
         ...item,
@@ -670,7 +734,9 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
                             <DebitSubItemsList
                               item={item}
                               onSubItemToggle={(subIndex) => toggleSubItem(item.id, subIndex)}
-                              onSubItemPaletteChange={(subIndex, palette) => updateSubItemPalette(item.id, subIndex, palette)}
+                              onSubItemPaletteChange={(subIndex, palette, cascade) => updateSubItemPalette(item.id, subIndex, palette, cascade)}
+                              onToggleAll={(termine) => toggleAllSubItems(item.id, termine)}
+                              onApplyPaletteToAll={(palette) => applyPaletteToAllSubItems(item.id, palette)}
                               isAdmin={isAdmin}
                               isBureau={isBureau}
                             />
