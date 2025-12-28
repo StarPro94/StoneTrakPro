@@ -120,6 +120,9 @@ export type Database = {
           finition: string | null;
           m2_item: number | null;
           m3_item: number | null;
+          numero_palette: number | null;
+          sub_items_termine: boolean[] | null;
+          sub_items_palettes: (number | null)[] | null;
         };
         Insert: {
           id?: string;
@@ -137,6 +140,9 @@ export type Database = {
           finition?: string | null;
           m2_item?: number | null;
           m3_item?: number | null;
+          numero_palette?: number | null;
+          sub_items_termine?: boolean[] | null;
+          sub_items_palettes?: (number | null)[] | null;
         };
         Update: {
           id?: string;
@@ -154,6 +160,9 @@ export type Database = {
           finition?: string | null;
           m2_item?: number | null;
           m3_item?: number | null;
+          numero_palette?: number | null;
+          sub_items_termine?: boolean[] | null;
+          sub_items_palettes?: (number | null)[] | null;
         };
       };
       machines: {

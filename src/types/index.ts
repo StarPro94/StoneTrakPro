@@ -36,6 +36,8 @@ export interface DebitItem {
   m2Item?: number;
   m3Item?: number;
   numeroPalette?: number;
+  subItemsTermine?: boolean[];
+  subItemsPalettes?: (number | null)[];
 }
 
 export interface WeeklyReport {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, Square, RotateCcw, Package, Grid3X3, Search, FileText, Upload, AlertCircle, Printer } from 'lucide-react';
+import { ArrowLeft, Check, Square, RotateCcw, Package, Grid3X3, Search, FileText, Upload, AlertCircle, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { DebitSheet, DebitItem } from '../types';
 import { useSlabs } from '../hooks/useSlabs';
 import { useMaterials } from '../hooks/useMaterials';
@@ -11,6 +11,7 @@ import { generatePackingSlipPDF } from '../utils/pdfGenerator';
 import { parsePDFFile } from '../utils/pdfParser';
 import PaletteSelectionModal from './PaletteSelectionModal';
 import { extractPalettesFromItems } from '../utils/paletteUtils';
+import { DebitSubItemsList } from './DebitSubItemsList';
 
 interface DebitSheetViewProps {
   sheet: DebitSheet;
@@ -33,6 +34,7 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
   const [editingMaterialItemId, setEditingMaterialItemId] = useState<string | null>(null);
   const [showPaletteSelectionModal, setShowPaletteSelectionModal] = useState(false);
   const [palettes, setPalettes] = useState<any[]>([]);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
   const { materials } = useMaterials();
   const materialNames = materials.map(m => m.name);
@@ -131,10 +133,15 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
   };
 
   const resetAllItems = () => {
-    const resetItems = items.map(item => ({ ...item, termine: false }));
+    const resetItems = items.map(item => ({
+      ...item,
+      termine: false,
+      subItemsTermine: Array(item.quantite).fill(false),
+      subItemsPalettes: Array(item.quantite).fill(null)
+    }));
     setItems(resetItems);
+    setExpandedItemId(null);
 
-    // Recalculer les quantités restantes avec tous les items actifs
     const totals = calculateSheetTotals(resetItems);
     setRemainingM2(totals.totalM2);
     setRemainingM3(totals.totalM3);
@@ -142,7 +149,7 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
     const updatedSheet = {
       ...sheet,
       items: resetItems,
-      fini: false, // Réinitialiser le statut fini
+      fini: false,
       dateFinition: undefined
     };
 
@@ -180,6 +187,92 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
     };
 
     onUpdateSheet(updatedSheet);
+  };
+
+  const toggleSubItem = (itemId: string, subIndex: number) => {
+    const updatedItems = items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const subItemsTermine = [...(item.subItemsTermine || Array(item.quantite).fill(false))];
+      subItemsTermine[subIndex] = !subItemsTermine[subIndex];
+
+      const allSubItemsTermine = subItemsTermine.every(t => t);
+
+      if (allSubItemsTermine) {
+        setExpandedItemId(null);
+      }
+
+      return {
+        ...item,
+        subItemsTermine,
+        termine: allSubItemsTermine
+      };
+    });
+
+    setItems(updatedItems);
+
+    const activeItems = updatedItems.filter(item => !item.termine);
+    const totals = calculateSheetTotals(activeItems);
+    setRemainingM2(totals.totalM2);
+    setRemainingM3(totals.totalM3);
+
+    const allItemsCompleted = updatedItems.every(item => item.termine);
+
+    const updatedSheet = {
+      ...sheet,
+      items: updatedItems,
+      ...(allItemsCompleted && !sheet.fini ? { fini: true, dateFinition: new Date() } : {})
+    };
+
+    onUpdateSheet(updatedSheet);
+  };
+
+  const updateSubItemPalette = (itemId: string, subIndex: number, palette: number | null) => {
+    const updatedItems = items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const subItemsPalettes = [...(item.subItemsPalettes || Array(item.quantite).fill(null))];
+      subItemsPalettes[subIndex] = palette;
+
+      return {
+        ...item,
+        subItemsPalettes
+      };
+    });
+
+    setItems(updatedItems);
+
+    const updatedSheet = {
+      ...sheet,
+      items: updatedItems
+    };
+
+    onUpdateSheet(updatedSheet);
+  };
+
+  const handleItemClick = (item: DebitItem) => {
+    if (!canToggleItems) return;
+
+    if (item.quantite > 1) {
+      setExpandedItemId(expandedItemId === item.id ? null : item.id);
+    } else {
+      toggleItem(item.id);
+    }
+  };
+
+  const getSubItemsSummary = (item: DebitItem) => {
+    if (item.quantite <= 1) return null;
+
+    const subItemsTermine = item.subItemsTermine || Array(item.quantite).fill(item.termine);
+    const completedCount = subItemsTermine.filter(t => t).length;
+    const subItemsPalettes = item.subItemsPalettes || [];
+    const uniquePalettes = [...new Set(subItemsPalettes.filter(p => p !== null))];
+
+    return {
+      completedCount,
+      total: item.quantite,
+      palettes: uniquePalettes as number[]
+    };
   };
 
   const handlePDFImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -387,135 +480,204 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
                   )}
                   
                   <div className="space-y-3">
-                    {filteredItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`p-4 border rounded-lg transition-all duration-300 cursor-pointer ${
-                          item.termine 
-                            ? 'bg-green-50 border-green-200 opacity-70' 
-                            : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
-                        }`}
-                        onClick={canToggleItems ? () => toggleItem(item.id) : undefined}
-                        style={{ cursor: canToggleItems ? 'pointer' : 'default' }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-shrink-0">
-                              {item.termine ? (
-                                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                  <Check className="h-5 w-5 text-white" />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center hover:border-blue-400 transition-colors">
-                                  <Square className="h-5 w-5 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className={`flex-1 ${item.termine ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                              <h4 className="font-medium">{item.description}</h4>
-                              <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-y-1">
-                                {item.numeroAppareil && <span className="inline-block mr-4">N° App: {item.numeroAppareil}</span>}
+                    {filteredItems.map((item) => {
+                      const isExpanded = expandedItemId === item.id;
+                      const subItemsSummary = getSubItemsSummary(item);
+                      const hasMultipleQuantity = item.quantite > 1;
 
-                                {(isAdmin || isBureau) ? (
-                                  <div
-                                    className="inline-block mr-4"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {editingMaterialItemId === item.id ? (
-                                      <div className="inline-block" style={{ minWidth: '250px' }}>
-                                        <MaterialSearchCombobox
-                                          materials={materialNames}
-                                          value={item.matiereItem || ''}
-                                          onChange={(value) => {
-                                            updateItemMaterial(item.id, value);
-                                            if (value && materialNames.includes(value)) {
-                                              setEditingMaterialItemId(null);
-                                            }
-                                          }}
-                                          placeholder="Rechercher une matière..."
-                                          className="inline-block"
-                                        />
-                                      </div>
+                      return (
+                        <div
+                          key={item.id}
+                          className={`border rounded-lg transition-all duration-300 ${
+                            item.termine
+                              ? 'bg-green-50 border-green-200 opacity-70'
+                              : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
+                          }`}
+                        >
+                          <div
+                            className="p-4 cursor-pointer"
+                            onClick={() => handleItemClick(item)}
+                            style={{ cursor: canToggleItems ? 'pointer' : 'default' }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                {hasMultipleQuantity && canToggleItems ? (
+                                  <div className="flex-shrink-0">
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-6 w-6 text-blue-500" />
                                     ) : (
-                                      <span
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingMaterialItemId(item.id);
-                                        }}
-                                        className={`cursor-pointer hover:text-blue-600 hover:underline ${
-                                          item.matiereItem && !materialNames.includes(item.matiereItem)
-                                            ? 'text-red-600 font-medium'
-                                            : ''
-                                        }`}
-                                        title="Cliquer pour modifier"
-                                      >
-                                        Matière: {item.matiereItem || 'Non définie'}
-                                        {item.matiereItem && !materialNames.includes(item.matiereItem) && ' ⚠️'}
-                                      </span>
+                                      <ChevronRight className="h-6 w-6 text-gray-400" />
                                     )}
                                   </div>
                                 ) : (
-                                  item.matiereItem && <span className="inline-block mr-4">Matière: {item.matiereItem}</span>
+                                  <div className="flex-shrink-0">
+                                    {item.termine ? (
+                                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                        <Check className="h-5 w-5 text-white" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center hover:border-blue-400 transition-colors">
+                                        <Square className="h-5 w-5 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
 
-                                {item.finition && <span className="inline-block mr-4">Finition: {item.finition}</span>}
-                                <span className="inline-block mr-4">L: {item.longueur}cm</span>
-                                <span className="inline-block mr-4">l: {item.largeur}cm</span>
-                                <span className="inline-block mr-4">Ép: {item.epaisseur}cm</span>
-                                <span className="inline-block mr-4">Qté: {item.quantite}</span>
-                                {item.numeroPalette && (
-                                  <span className="inline-block font-medium text-purple-600">
-                                    Palette: {item.numeroPalette}
-                                  </span>
+                                {hasMultipleQuantity && (
+                                  <div className="flex-shrink-0">
+                                    {item.termine ? (
+                                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                        <Check className="h-5 w-5 text-white" />
+                                      </div>
+                                    ) : subItemsSummary && subItemsSummary.completedCount > 0 ? (
+                                      <div className="w-8 h-8 bg-blue-100 border-2 border-blue-400 rounded-full flex items-center justify-center">
+                                        <span className="text-xs font-bold text-blue-600">
+                                          {subItemsSummary.completedCount}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                                        <Square className="h-5 w-5 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
+
+                                <div className={`flex-1 ${item.termine ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                  <h4 className="font-medium">{item.description}</h4>
+                                  <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-y-1">
+                                    {item.numeroAppareil && <span className="inline-block mr-4">N° App: {item.numeroAppareil}</span>}
+
+                                    {(isAdmin || isBureau) ? (
+                                      <div
+                                        className="inline-block mr-4"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {editingMaterialItemId === item.id ? (
+                                          <div className="inline-block" style={{ minWidth: '250px' }}>
+                                            <MaterialSearchCombobox
+                                              materials={materialNames}
+                                              value={item.matiereItem || ''}
+                                              onChange={(value) => {
+                                                updateItemMaterial(item.id, value);
+                                                if (value && materialNames.includes(value)) {
+                                                  setEditingMaterialItemId(null);
+                                                }
+                                              }}
+                                              placeholder="Rechercher une matiere..."
+                                              className="inline-block"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingMaterialItemId(item.id);
+                                            }}
+                                            className={`cursor-pointer hover:text-blue-600 hover:underline ${
+                                              item.matiereItem && !materialNames.includes(item.matiereItem)
+                                                ? 'text-red-600 font-medium'
+                                                : ''
+                                            }`}
+                                            title="Cliquer pour modifier"
+                                          >
+                                            Matiere: {item.matiereItem || 'Non definie'}
+                                            {item.matiereItem && !materialNames.includes(item.matiereItem) && ' (!)'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      item.matiereItem && <span className="inline-block mr-4">Matiere: {item.matiereItem}</span>
+                                    )}
+
+                                    {item.finition && <span className="inline-block mr-4">Finition: {item.finition}</span>}
+                                    <span className="inline-block mr-4">L: {item.longueur}cm</span>
+                                    <span className="inline-block mr-4">l: {item.largeur}cm</span>
+                                    <span className="inline-block mr-4">Ep: {item.epaisseur}cm</span>
+                                    <span className="inline-block mr-4">Qte: {item.quantite}</span>
+
+                                    {subItemsSummary && (
+                                      <span className={`inline-block font-medium ${
+                                        subItemsSummary.completedCount === subItemsSummary.total
+                                          ? 'text-green-600'
+                                          : subItemsSummary.completedCount > 0
+                                            ? 'text-blue-600'
+                                            : 'text-gray-500'
+                                      }`}>
+                                        {subItemsSummary.completedCount}/{subItemsSummary.total} termine(s)
+                                      </span>
+                                    )}
+
+                                    {!hasMultipleQuantity && item.numeroPalette && (
+                                      <span className="inline-block font-medium text-purple-600">
+                                        Palette: {item.numeroPalette}
+                                      </span>
+                                    )}
+
+                                    {subItemsSummary && subItemsSummary.palettes.length > 0 && (
+                                      <span className="inline-block font-medium text-purple-600">
+                                        Palettes: {subItemsSummary.palettes.join(', ')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end space-y-2">
+                                {(isAdmin || isBureau) && !hasMultipleQuantity && (
+                                  <div className="flex items-center space-x-2">
+                                    <Package className="h-4 w-4 text-gray-400" />
+                                    <input
+                                      type="number"
+                                      value={item.numeroPalette || ''}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        updateItemPalette(item.id, e.target.value ? Number(e.target.value) : undefined);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      placeholder="N palette"
+                                      className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      min="1"
+                                    />
+                                  </div>
+                                )}
+                                <div className="text-right">
+                                  {(() => {
+                                    const metrics = item.m2Item !== undefined && item.m3Item !== undefined
+                                      ? { m2: item.m2Item, m3: item.m3Item }
+                                      : calculateItemMetrics(item.longueur, item.largeur, item.epaisseur, item.quantite, item.matiereItem);
+                                    return (
+                                      <>
+                                        {metrics.m2 > 0 && (
+                                          <div className="text-sm font-medium text-emerald-700">
+                                            {metrics.m2.toFixed(2)} m2
+                                          </div>
+                                        )}
+                                        {metrics.m3 > 0 && (
+                                          <div className="text-sm font-medium text-blue-700">
+                                            {metrics.m3.toFixed(3)} m3
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex flex-col items-end space-y-2">
-                            {(isAdmin || isBureau) && (
-                              <div className="flex items-center space-x-2">
-                                <Package className="h-4 w-4 text-gray-400" />
-                                <input
-                                  type="number"
-                                  value={item.numeroPalette || ''}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    updateItemPalette(item.id, e.target.value ? Number(e.target.value) : undefined);
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="N° palette"
-                                  className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                  min="1"
-                                />
-                              </div>
-                            )}
-                            <div className="text-right">
-                              {(() => {
-                                const metrics = item.m2Item !== undefined && item.m3Item !== undefined
-                                  ? { m2: item.m2Item, m3: item.m3Item }
-                                  : calculateItemMetrics(item.longueur, item.largeur, item.epaisseur, item.quantite, item.matiereItem);
-                                return (
-                                  <>
-                                    {metrics.m2 > 0 && (
-                                      <div className="text-sm font-medium text-emerald-700">
-                                        {metrics.m2.toFixed(2)} m²
-                                      </div>
-                                    )}
-                                    {metrics.m3 > 0 && (
-                                      <div className="text-sm font-medium text-blue-700">
-                                        {metrics.m3.toFixed(3)} m³
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          </div>
+                          {isExpanded && hasMultipleQuantity && (
+                            <DebitSubItemsList
+                              item={item}
+                              onSubItemToggle={(subIndex) => toggleSubItem(item.id, subIndex)}
+                              onSubItemPaletteChange={(subIndex, palette) => updateSubItemPalette(item.id, subIndex, palette)}
+                              isAdmin={isAdmin}
+                              isBureau={isBureau}
+                            />
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {items.length === 0 ? (

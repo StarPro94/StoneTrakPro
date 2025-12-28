@@ -71,21 +71,33 @@ export function useDebitSheets() {
         refChantier: sheet.ref_chantier || undefined,
         devisNumero: sheet.devis_numero || undefined,
         machineId: sheet.machine_id || undefined,
-        items: (sheet.debit_items || []).map((item: any) => ({
-          id: item.id,
-          description: item.description,
-          longueur: parseFloat(item.longueur),
-          largeur: parseFloat(item.largeur),
-          epaisseur: parseFloat(item.epaisseur),
-          quantite: item.quantite,
-          termine: item.termine,
-          numeroAppareil: item.numero_appareil || undefined,
-          matiereItem: item.matiere_item || undefined,
-          finition: item.finition || undefined,
-          m2Item: item.m2_item ? parseFloat(item.m2_item) : undefined,
-          m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined,
-          numeroPalette: item.numero_palette || undefined
-        }))
+        items: (sheet.debit_items || []).map((item: any) => {
+          const quantite = item.quantite || 1;
+          const subItemsTermine = item.sub_items_termine && Array.isArray(item.sub_items_termine)
+            ? item.sub_items_termine
+            : Array(quantite).fill(item.termine);
+          const subItemsPalettes = item.sub_items_palettes && Array.isArray(item.sub_items_palettes)
+            ? item.sub_items_palettes
+            : Array(quantite).fill(item.numero_palette || null);
+
+          return {
+            id: item.id,
+            description: item.description,
+            longueur: parseFloat(item.longueur),
+            largeur: parseFloat(item.largeur),
+            epaisseur: parseFloat(item.epaisseur),
+            quantite,
+            termine: item.termine,
+            numeroAppareil: item.numero_appareil || undefined,
+            matiereItem: item.matiere_item || undefined,
+            finition: item.finition || undefined,
+            m2Item: item.m2_item ? parseFloat(item.m2_item) : undefined,
+            m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined,
+            numeroPalette: item.numero_palette || undefined,
+            subItemsTermine,
+            subItemsPalettes
+          };
+        })
       }));
 
       setSheets(formattedSheets);
@@ -207,6 +219,8 @@ export function useDebitSheets() {
           description: item.description.substring(0, 30)
         });
 
+        const allSubItemsTermine = item.subItemsTermine?.every(t => t) ?? item.termine;
+
         const { error: itemError } = await supabase
           .from('debit_items')
           .update({
@@ -215,13 +229,15 @@ export function useDebitSheets() {
             largeur: item.largeur,
             epaisseur: item.epaisseur,
             quantite: item.quantite,
-            termine: item.termine,
+            termine: allSubItemsTermine,
             numero_appareil: item.numeroAppareil || null,
             matiere_item: item.matiereItem || null,
             finition: item.finition || null,
             m2_item: item.m2Item || null,
             m3_item: item.m3Item || null,
-            numero_palette: item.numeroPalette || null
+            numero_palette: item.numeroPalette || null,
+            sub_items_termine: item.subItemsTermine || null,
+            sub_items_palettes: item.subItemsPalettes || null
           })
           .eq('id', item.id);
 
@@ -285,21 +301,29 @@ export function useDebitSheets() {
       // Ajouter les items si présents
       const items = newSheetData.items || [];
       if (items.length > 0) {
-        const itemsToInsert = items.map(item => ({
-          sheet_id: sheetData.id,
-          description: item.description,
-          longueur: item.longueur,
-          largeur: item.largeur,
-          epaisseur: item.epaisseur,
-          quantite: item.quantite,
-          termine: item.termine,
-          numero_appareil: item.numeroAppareil || null,
-          matiere_item: item.matiereItem || null,
-          finition: item.finition || null,
-          m2_item: item.m2Item || null,
-          m3_item: item.m3Item || null,
-          numero_palette: item.numeroPalette || null
-        }));
+        const itemsToInsert = items.map(item => {
+          const quantite = item.quantite || 1;
+          const subItemsTermine = item.subItemsTermine || Array(quantite).fill(item.termine);
+          const subItemsPalettes = item.subItemsPalettes || Array(quantite).fill(item.numeroPalette || null);
+
+          return {
+            sheet_id: sheetData.id,
+            description: item.description,
+            longueur: item.longueur,
+            largeur: item.largeur,
+            epaisseur: item.epaisseur,
+            quantite: item.quantite,
+            termine: item.termine,
+            numero_appareil: item.numeroAppareil || null,
+            matiere_item: item.matiereItem || null,
+            finition: item.finition || null,
+            m2_item: item.m2Item || null,
+            m3_item: item.m3Item || null,
+            numero_palette: item.numeroPalette || null,
+            sub_items_termine: subItemsTermine,
+            sub_items_palettes: subItemsPalettes
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('debit_items')
@@ -553,20 +577,33 @@ export function useDebitSheets() {
                   dateCreation: new Date(newSheetData.date_creation),
                   dateFinition: newSheetData.date_finition ? new Date(newSheetData.date_finition) : undefined,
                   dateLivraison: newSheetData.date_livraison ? new Date(newSheetData.date_livraison) : undefined,
-                  items: (newSheetData.debit_items || []).map((item: any) => ({
-                    id: item.id,
-                    description: item.description,
-                    longueur: parseFloat(item.longueur),
-                    largeur: parseFloat(item.largeur),
-                    epaisseur: parseFloat(item.epaisseur),
-                    quantite: item.quantite,
-                    termine: item.termine,
-                    numeroAppareil: item.numero_appareil || undefined,
-                    matiereItem: item.matiere_item || undefined,
-                    finition: item.finition || undefined,
-                    m2Item: item.m2_item ? parseFloat(item.m2_item) : undefined,
-                    m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined
-                  }))
+                  items: (newSheetData.debit_items || []).map((item: any) => {
+                    const quantite = item.quantite || 1;
+                    const subItemsTermine = item.sub_items_termine && Array.isArray(item.sub_items_termine)
+                      ? item.sub_items_termine
+                      : Array(quantite).fill(item.termine);
+                    const subItemsPalettes = item.sub_items_palettes && Array.isArray(item.sub_items_palettes)
+                      ? item.sub_items_palettes
+                      : Array(quantite).fill(item.numero_palette || null);
+
+                    return {
+                      id: item.id,
+                      description: item.description,
+                      longueur: parseFloat(item.longueur),
+                      largeur: parseFloat(item.largeur),
+                      epaisseur: parseFloat(item.epaisseur),
+                      quantite,
+                      termine: item.termine,
+                      numeroAppareil: item.numero_appareil || undefined,
+                      matiereItem: item.matiere_item || undefined,
+                      finition: item.finition || undefined,
+                      m2Item: item.m2_item ? parseFloat(item.m2_item) : undefined,
+                      m3Item: item.m3_item ? parseFloat(item.m3_item) : undefined,
+                      numeroPalette: item.numero_palette || undefined,
+                      subItemsTermine,
+                      subItemsPalettes
+                    };
+                  })
                 };
 
                 console.log('Formatted sheet for state update:', formattedSheet);
@@ -658,9 +695,16 @@ export function useDebitSheets() {
               console.log('Sheet ID de l\'item:', payload.new.sheet_id);
               console.log('État actuel des sheets avant ajout item:', sheets.map(s => ({ id: s.id, itemsCount: s.items.length })));
               
-              // Ajouter le nouvel item à la feuille correspondante
-              setSheets(prevSheets => 
-                prevSheets.map(sheet => 
+              const quantite = payload.new.quantite || 1;
+              const subItemsTermine = payload.new.sub_items_termine && Array.isArray(payload.new.sub_items_termine)
+                ? payload.new.sub_items_termine
+                : Array(quantite).fill(payload.new.termine);
+              const subItemsPalettes = payload.new.sub_items_palettes && Array.isArray(payload.new.sub_items_palettes)
+                ? payload.new.sub_items_palettes
+                : Array(quantite).fill(payload.new.numero_palette || null);
+
+              setSheets(prevSheets =>
+                prevSheets.map(sheet =>
                   sheet.id === payload.new.sheet_id
                     ? {
                         ...sheet,
@@ -670,13 +714,16 @@ export function useDebitSheets() {
                           longueur: parseFloat(payload.new.longueur),
                           largeur: parseFloat(payload.new.largeur),
                           epaisseur: parseFloat(payload.new.epaisseur),
-                          quantite: payload.new.quantite,
+                          quantite,
                           termine: payload.new.termine,
                           numeroAppareil: payload.new.numero_appareil || undefined,
                           matiereItem: payload.new.matiere_item || undefined,
                           finition: payload.new.finition || undefined,
                           m2Item: payload.new.m2_item ? parseFloat(payload.new.m2_item) : undefined,
-                          m3Item: payload.new.m3_item ? parseFloat(payload.new.m3_item) : undefined
+                          m3Item: payload.new.m3_item ? parseFloat(payload.new.m3_item) : undefined,
+                          numeroPalette: payload.new.numero_palette || undefined,
+                          subItemsTermine,
+                          subItemsPalettes
                         }]
                       }
                     : sheet
@@ -688,7 +735,15 @@ export function useDebitSheets() {
             } else if (payload.eventType === 'UPDATE') {
               console.log('=== DÉBUT TRAITEMENT UPDATE ITEM ===');
               console.log('Payload UPDATE item reçu:', payload);
-              // Mettre à jour l'item existant avec TOUS les champs
+
+              const quantiteUpdate = payload.new.quantite || 1;
+              const subItemsTermineUpdate = payload.new.sub_items_termine && Array.isArray(payload.new.sub_items_termine)
+                ? payload.new.sub_items_termine
+                : Array(quantiteUpdate).fill(payload.new.termine);
+              const subItemsPalettesUpdate = payload.new.sub_items_palettes && Array.isArray(payload.new.sub_items_palettes)
+                ? payload.new.sub_items_palettes
+                : Array(quantiteUpdate).fill(payload.new.numero_palette || null);
+
               setSheets(prevSheets =>
                 prevSheets.map(sheet =>
                   sheet.id === payload.new.sheet_id
@@ -702,14 +757,16 @@ export function useDebitSheets() {
                                 longueur: parseFloat(payload.new.longueur),
                                 largeur: parseFloat(payload.new.largeur),
                                 epaisseur: parseFloat(payload.new.epaisseur),
-                                quantite: payload.new.quantite,
+                                quantite: quantiteUpdate,
                                 termine: payload.new.termine,
                                 numeroAppareil: payload.new.numero_appareil || undefined,
                                 matiereItem: payload.new.matiere_item || undefined,
                                 finition: payload.new.finition || undefined,
                                 m2Item: payload.new.m2_item ? parseFloat(payload.new.m2_item) : undefined,
                                 m3Item: payload.new.m3_item ? parseFloat(payload.new.m3_item) : undefined,
-                                numeroPalette: payload.new.numero_palette || undefined
+                                numeroPalette: payload.new.numero_palette || undefined,
+                                subItemsTermine: subItemsTermineUpdate,
+                                subItemsPalettes: subItemsPalettesUpdate
                               }
                             : item
                         )
