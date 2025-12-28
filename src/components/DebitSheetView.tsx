@@ -226,80 +226,83 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
   const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+          <div className="p-4 md:p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+            <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col space-y-3 md:flex-row md:items-center md:space-y-0 md:space-x-4">
                 <button
                   onClick={onBack}
-                  className="flex items-center space-x-2 text-blue-300 hover:text-blue-100 transition-colors"
+                  className="flex items-center space-x-2 text-blue-300 hover:text-blue-100 transition-colors self-start"
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  <span>Retour au tableau</span>
+                  <span className="text-sm md:text-base">Retour au tableau</span>
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold">Feuille de Débit - {sheet.numeroOS}</h2>
-                  <p className="text-blue-200">{sheet.nomClient}</p>
+                  <h2 className="text-xl md:text-2xl font-bold">Feuille de Débit - {sheet.numeroOS}</h2>
+                  <p className="text-sm md:text-base text-blue-200">{sheet.nomClient}</p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 {(isAdmin || isBureau) && (
                   <>
                     <button
                       onClick={() => generatePackingSlipPDF({ ...sheet, items })}
-                      className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                      className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm md:text-base flex-1 sm:flex-none justify-center"
+                      title="Imprimer Tout"
                     >
                       <Printer className="h-4 w-4" />
-                      <span>Imprimer Tout</span>
+                      <span className="hidden sm:inline">Imprimer Tout</span>
                     </button>
                     <button
                       onClick={() => setShowPaletteSelectionModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                      className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm md:text-base flex-1 sm:flex-none justify-center"
+                      title="Sélectionner Palettes"
                     >
                       <FileText className="h-4 w-4" />
-                      <span>Sélectionner Palettes</span>
+                      <span className="hidden sm:inline">Sélectionner Palettes</span>
                     </button>
                   </>
                 )}
                 {canResetItems && (
                   <button
                     onClick={resetAllItems}
-                    className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                    className="bg-orange-600 hover:bg-orange-700 px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm md:text-base flex-1 sm:flex-none justify-center"
+                    title="Réinitialiser"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    <span>Réinitialiser</span>
+                    <span className="hidden sm:inline">Réinitialiser</span>
                   </button>
                 )}
               </div>
             </div>
 
             {/* Onglets de navigation */}
-            <div className="mt-6 flex space-x-1 bg-slate-700 rounded-lg p-1">
+            <div className="mt-4 md:mt-6 flex space-x-1 bg-slate-700 rounded-lg p-1">
               <button
                 onClick={() => setActiveSubTab('items')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center space-x-2 ${
+                className={`flex-1 py-2 px-2 sm:px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm md:text-base ${
                   activeSubTab === 'items'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-300 hover:text-white hover:bg-slate-600'
                 }`}
               >
-                <Square className="h-4 w-4" />
-                <span>Éléments à Traiter</span>
+                <Square className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Éléments à Traiter</span>
               </button>
               {canViewSlabs && (
                 <button
                   onClick={() => setActiveSubTab('slabs')}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center space-x-2 ${
+                  className={`flex-1 py-2 px-2 sm:px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm md:text-base ${
                     activeSubTab === 'slabs'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-gray-300 hover:text-white hover:bg-slate-600'
                   }`}
                 >
-                  <Grid3X3 className="h-4 w-4" />
-                  <span>Tranches Assignées</span>
+                  <Grid3X3 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Tranches Assignées</span>
                 </button>
               )}
             </div>
@@ -319,40 +322,40 @@ export default function DebitSheetView({ sheet, profileLoading, profile, isAdmin
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {activeSubTab === 'items' && (
               <>
                 {/* Informations de la commande */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8 p-3 md:p-4 bg-gray-50 rounded-lg">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Commercial</label>
-                    <p className="text-lg font-semibold text-gray-900">{sheet.cial}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-600">Commercial</label>
+                    <p className="text-base sm:text-lg font-semibold text-gray-900 truncate">{sheet.cial}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Chantier</label>
-                    <p className="text-lg font-semibold text-gray-900">{sheet.refChantier || '-'}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-600">Chantier</label>
+                    <p className="text-base sm:text-lg font-semibold text-gray-900 truncate">{sheet.refChantier || '-'}</p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">N° ARC</label>
-                    <p className="text-lg font-semibold text-gray-900">{sheet.numeroARC}</p>
+                  <div className="sm:col-span-2 md:col-span-1">
+                    <label className="text-xs sm:text-sm font-medium text-gray-600">N° ARC</label>
+                    <p className="text-base sm:text-lg font-semibold text-gray-900">{sheet.numeroARC}</p>
                   </div>
                 </div>
 
                 {/* Résumé des quantités */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-emerald-800 mb-2">Surface Totale</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-emerald-800 mb-2">Surface Totale</h3>
                     <div>
-                      <p className="text-3xl font-bold text-emerald-600">{remainingM2.toFixed(2)} m²</p>
-                      <p className="text-sm text-emerald-600 mt-1">Restant à traiter</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{remainingM2.toFixed(2)} m²</p>
+                      <p className="text-xs sm:text-sm text-emerald-600 mt-1">Restant à traiter</p>
                       <p className="text-xs text-gray-500">Total initial: {sheet.m2.toFixed(2)} m²</p>
                     </div>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Volume Total</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-blue-800 mb-2">Volume Total</h3>
                     <div>
-                      <p className="text-3xl font-bold text-blue-600">{remainingM3.toFixed(3)} m³</p>
-                      <p className="text-sm text-blue-600 mt-1">Restant à traiter</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-blue-600">{remainingM3.toFixed(3)} m³</p>
+                      <p className="text-xs sm:text-sm text-blue-600 mt-1">Restant à traiter</p>
                       <p className="text-xs text-gray-500">Total initial: {sheet.m3.toFixed(3)} m³</p>
                     </div>
                   </div>
